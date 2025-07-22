@@ -1,0 +1,32 @@
+digraph INFRA {
+  node [ color = "black", fillcolor = "#E6E6E6", height =1, style = "filled,bold,rounded", fontname = "Arial" ];
+  "GitHubTokenSecret" [ label = "GitHubTokenSecret
+(AWS::SecretsManager::Secret)", shape =cylinder, fillcolor = "#FFF5CD" ];
+  "CommonLambdaRole" [ label = "CommonLambdaRole
+(AWS::IAM::Role)", shape =rectangle ];
+  "GitLayer" [ label = "GitLayer
+(AWS::Lambda::LayerVersion)", shape =rectangle, fillcolor = "#B7E0FF" ];
+  "DependencyLayer" [ label = "DependencyLayer
+(AWS::Lambda::LayerVersion)", shape =rectangle, fillcolor = "#B7E0FF" ];
+  "CheckProjectStatus" [ label = "CheckProjectStatus
+(AWS::Lambda::Function)", shape =rectangle, fillcolor = "#B7E0FF" ];
+  "SyncRepositories" [ label = "SyncRepositories
+(AWS::Lambda::Function)", shape =rectangle, fillcolor = "#B7E0FF" ];
+  "CreateDeployRepository" [ label = "CreateDeployRepository
+(AWS::Lambda::Function)", shape =rectangle, fillcolor = "#B7E0FF" ];
+  "StateMachine" [ label = "StateMachine
+(AWS::StepFunctions::StateMachine)", shape =rectangle, fillcolor = "#B7E0FF" ];
+  "CheckProjectStatus" -> "GitLayer";
+  "CheckProjectStatus" -> "DependencyLayer";
+  "CheckProjectStatus" -> "CommonLambdaRole";
+  "SyncRepositories" -> "GitLayer";
+  "SyncRepositories" -> "DependencyLayer";
+  "SyncRepositories" -> "CommonLambdaRole";
+  "SyncRepositories" -> "GitHubTokenSecret";
+  "CreateDeployRepository" -> "GitLayer";
+  "CreateDeployRepository" -> "DependencyLayer";
+  "CreateDeployRepository" -> "CommonLambdaRole";
+  "StateMachine" -> "CheckProjectStatus";
+  "StateMachine" -> "SyncRepositories";
+  "StateMachine" -> "CreateDeployRepository";
+}
