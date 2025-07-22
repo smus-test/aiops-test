@@ -3,7 +3,7 @@
 # Change the paths as you see fit for your use-cases.
 
 name: Sagemaker Pipeline build SMUS project
-run-name: ${{ github.actor }} is building in SMUS 🚀
+run-name: ${{ github.actor }} is building in SMUS
 
 on:
   workflow_dispatch:
@@ -38,10 +38,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-    - run: echo "🖥️ This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-    - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-    - run: echo "👩🏻‍💻 The commit message for the event -\n ${{ github.event.head_commit.message }}"
+    - run: echo "The job was automatically triggered by a ${{ github.event_name }} event."
+    - run: echo "This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+    - run: echo "The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+    - run: echo "The commit message for the event -\n ${{ github.event.head_commit.message }}"
     - uses: actions/checkout@v4
     - name: Check out repository code
       uses: actions/checkout@v4
@@ -52,8 +52,8 @@ jobs:
     - name: Configure Dev Account AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-          role-to-assume: ${{secrets.PIPELINE_EXECUTION_IAM_ROLE}}
-          aws-region: ${{secrets.AWS_REGION}}
+          role-to-assume: ${{secrets.OIDC_ROLE_GITHUB_WORKFLOW}}
+          aws-region: ${{secrets.REGION}}
     - name: Install pip dependencies
       run: |
         python -m pip install --upgrade pip
@@ -69,6 +69,6 @@ jobs:
         export PYTHONUNBUFFERED=TRUE
         export SAGEMAKER_PROJECT_NAME_ID="${{secrets.SAGEMAKER_PROJECT_NAME}}-${{secrets.SAGEMAKER_PROJECT_ID}}"
         python ./ml_pipelines/run_pipeline.py --module-name training.pipeline     --role-arn ${{secrets.SAGEMAKER_PIPELINE_ROLE_ARN}}     --tags '[{"Key":"sagemaker:project-name", "Value":"${{secrets.SAGEMAKER_PROJECT_NAME}}"}, {"Key":"sagemaker:project-id", "Value":"${{secrets.SAGEMAKER_PROJECT_ID}}"}, {"Key":"AmazonDataZoneDomain", "Value":"${{secrets.AMAZON_DATAZONE_DOMAIN}}"}, {"Key":"AmazonDataZoneScopeName", "Value":"${{secrets.AMAZON_DATAZONE_SCOPENAME}}"}, {"Key":"sagemaker:domain-arn", "Value":"${{secrets.SAGEMAKER_DOMAIN_ARN}}"}, {"Key":"sagemaker:space-arn", "Value":"${{secrets.SAGEMAKER_SPACE_ARN}}"}, {"Key":"AmazonDataZoneProject", "Value":"${{secrets.AMAZON_DATAZONE_PROJECT}}"}]'     --kwargs '{"region":"${{vars.REGION}}","role":"${{secrets.SAGEMAKER_PIPELINE_ROLE_ARN}}","default_bucket":"${{secrets.ARTIFACT_BUCKET}}","pipeline_name":"${{secrets.MODEL_PACKAGE_GROUP_NAME}}-${{secrets.SAGEMAKER_PROJECT_ID}}","model_package_group_name":"git-${{secrets.MODEL_PACKAGE_GROUP_NAME}}","base_job_prefix":"SMUSMLOPS"}'
-        echo "🌟 Success: Create/Update of the SageMaker Pipeline and execution completed."
-    - run: echo "💯 This github action job's status is ${{ job.status }}."
+        echo "Success: Create/Update of the SageMaker Pipeline and execution completed."
+    - run: echo "This github action job's status is ${{ job.status }}."
     

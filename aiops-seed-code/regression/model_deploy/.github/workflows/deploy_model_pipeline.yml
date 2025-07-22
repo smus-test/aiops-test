@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DEPOY_ACCOUNT: ${{ secrets.DEPLOY_ACCOUNT }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_REGION: ${{ secrets.REGION }}
       MODEL_PACKAGE_GROUP_NAME: ${{ secrets.MODEL_PACKAGE_GROUP_NAME }}
       SAGEMAKER_PROJECT_ID: ${{ secrets.SAGEMAKER_PROJECT_ID }}
       SAGEMAKER_PROJECT_NAME: ${{ secrets.SAGEMAKER_PROJECT_NAME }}
@@ -54,8 +54,8 @@ jobs:
     - name: Configure Dev Account AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-          role-to-assume: ${{secrets.PIPELINE_EXECUTION_IAM_ROLE}}
-          aws-region: ${{secrets.AWS_REGION}}
+          role-to-assume: ${{secrets.OIDC_ROLE_GITHUB_WORKFLOW}}
+          aws-region: ${{secrets.REGION}}
     - name: Install dependencies
       run: |
         sh install-prerequisites-brew.sh
