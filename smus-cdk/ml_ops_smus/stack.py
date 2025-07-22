@@ -5,6 +5,7 @@ from aws_cdk import (
     aws_iam as iam,
     aws_secretsmanager as secretsmanager,
     RemovalPolicy,
+    Aws,
     CfnOutput
 )
 from constructs import Construct
@@ -20,6 +21,7 @@ class RepoSyncStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         role_name = config.oidc_role_github_workflow
+        
 
         if not role_name:
             raise ValueError("OIDC role name for GitHub workflow is not provided in the config.")
@@ -40,12 +42,28 @@ class RepoSyncStack(Stack):
         except iam_client.exceptions.NoSuchEntityException:
             # Create role if it doesn't exist
             print(f"Role {role_name} not found. Creating new role...")
+            account_id = Aws.ACCOUNT_ID
+            github_org = config.private_github_organization
+
             github_workflow_role = iam.Role(
                 self, "GitHubWorkflowRole",
                 role_name=role_name,
                 assumed_by=iam.CompositePrincipal(
-                    iam.ServicePrincipal("sagemaker.amazonaws.com"),
-                    iam.ServicePrincipal("codebuild.amazonaws.com")
+                    iam.FederatedPrincipal(
+                        federated=f"arn:aws:iam::{account_id}:oidc-provider/token.actions.githubusercontent.com",
+                        conditions={
+                            "StringEquals": {
+                                "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+                            },
+                            "StringLike": {
+                                "token.actions.githubusercontent.com:sub": [
+                                    f"repo:{github_org}/*" 
+                                ]
+                            }
+                        },
+                        assume_role_action="sts:AssumeRoleWithWebIdentity"
+                    ),
+                    iam.AccountRootPrincipal()
                 )
             )
             # Add policies for new role

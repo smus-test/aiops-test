@@ -135,9 +135,10 @@ class LambdaConstruct(Construct):
             "layers": [git_layer.layer, dependency_layer.layer],
             "role": lambda_role,  
             "environment": {
-                "PUBLIC_AIOPS_TEMPLATES_ORG": config.public_aiops_templates_org,
+                "PUBLIC_SMUS_AIOPS_ORG": config.public_smus_aiops_org,
+                "PUBLIC_SMUS_AIOPS_ORG_REPO": config.public_smus_aiops_org_repo,
+                "PUBLIC_SMUS_AIOPS_ORG_REPO_FOLDER": config.public_smus_aiops_org_repo_folder,
                 "OIDC_ROLE_GITHUB_WORKFLOW": self.github_workflow_role_arn,
-                "SPECIFIC_FOLDERS": str(config.specific_folders),
                 "GITHUB_TOKEN_SECRET_NAME": config.github_token_secret_name,
                 "PRIVATE_GITHUB_ORGANIZATION": config.private_github_organization,
                 "PRIVATE_DEPLOY_REPO_DEFAULT_BRANCH": config.private_deploy_repo_default_branch,
@@ -156,7 +157,7 @@ class LambdaConstruct(Construct):
                 'CheckProjectStatus',
                 handler='index.lambda_handler',
                 code=_lambda.Code.from_asset("lambda/check-project-status"),
-                function_name="ml-ops-check-project-status",
+                function_name="ai-ops-check-project-status",
                 **common_props
             ),
             'sync_repos': _lambda.Function(
@@ -164,7 +165,7 @@ class LambdaConstruct(Construct):
                 'SyncRepositories',
                 handler='index.lambda_handler',
                 code=_lambda.Code.from_asset("lambda/sync-repositories"),
-                function_name="ml-ops-sync-repositories",
+                function_name="ai-ops-sync-repositories",
                 **common_props
             ),
             'create_deploy_repo': _lambda.Function(
@@ -172,7 +173,7 @@ class LambdaConstruct(Construct):
                 'CreateDeployRepository',
                 handler='index.lambda_handler',
                 code=_lambda.Code.from_asset("lambda/create-deploy-repository"),
-                function_name="ml-ops-create-deploy-repo",
+                function_name="ai-ops-create-deploy-repo",
                 **common_props
             )
         }

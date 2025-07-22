@@ -7,15 +7,19 @@ import shutil
 import time
 
 class GitOperations:
-    def __init__(self, org_url, profile_name, private_repo):
+    def __init__(self, org_name, repo_name, profile_name, private_repo, public_aiops_code_folder):
         print("\n=== Initializing GitOperations ===")
-        print(f"Organization URL: {org_url}")
+        print(f"Organization Name: {org_name}")
+        print(f"Repository Name: {repo_name}")
         print(f"Profile Name: {profile_name}")
         print(f"Private Repo: {private_repo}")
+        print(f"Public AIOPS Code Folder: {public_aiops_code_folder}")
         
-        self.org_url = org_url.rstrip('/')
-        self.profile_name = profile_name
+        self.org_name = org_name
+        self.repo_name = repo_name
+        self.profile_name = profile_name.lower()  
         self.private_repo = private_repo
+        self.public_aiops_code_folder = public_aiops_code_folder
         self.temp_dir = '/tmp'
         self.source_repo_path = os.path.join(self.temp_dir, 'source_repo')
         self.private_repo_path = os.path.join(self.temp_dir, 'private_repo')
@@ -91,7 +95,7 @@ class GitOperations:
 
             git_token = self._get_git_credentials()
             # Include token in source repo URL since it's a private repository
-            source_repo_url = f"{self.org_url}/{self.profile_name}.git"
+            source_repo_url = f"https://github.com/{self.org_name}/{self.repo_name}.git"
             private_repo_url = f"https://{git_token}@github.com/{self.private_repo}.git"
 
             print(f"\nStep 1: Cloning source repository for profile {self.profile_name}")
@@ -111,55 +115,57 @@ class GitOperations:
                         raise
 
             print("\nStep 3: Configuring git")
-            self._run_git_command(['config', 'user.name', 'AWS Lambda'], self.private_repo_path)
-            self._run_git_command(['config', 'user.email', 'lambda@example.com'], self.private_repo_path)
+            self._run_git_command(['config', 'user.name', 'SMUS-AIOPS'], self.private_repo_path)
+            self._run_git_command(['config', 'user.email', 'smus-aiops@example.com'], self.private_repo_path)
 
             print("\nStep 4: Locating and copying model_build folder")
             build_folder_found = False
-            for root, dirs, _ in os.walk(self.source_repo_path):
-                if 'model_build' in dirs:
-                    src_path = os.path.join(root, 'model_build')
-                    print(f"Found model_build folder at: {src_path}")
-                    
-                    # Copy model_build contents
-                    for item in os.listdir(src_path):
-                        src_item = os.path.join(src_path, item)
-                        dst_item = os.path.join(self.private_repo_path, item)
+
+            # Look for the model_build folder in the hierarchical structure
+            aiops_code_path = os.path.join(self.source_repo_path, self.public_aiops_code_folder)
+            if os.path.exists(aiops_code_path):
+                profile_path = os.path.join(aiops_code_path, self.profile_name)
+                if os.path.exists(profile_path):
+                    model_build_path = os.path.join(profile_path, 'model_build')
+                    if os.path.exists(model_build_path):
+                        print(f"Found model_build folder at: {model_build_path}")
                         
-                        if os.path.isdir(src_item):
-                            if os.path.exists(dst_item):
-                                shutil.rmtree(dst_item)
-                            shutil.copytree(src_item, dst_item)
-                        else:
-                            shutil.copy2(src_item, dst_item)
-                    
-                    # Check for .github/workflows in model_build
-                    github_workflows_path = os.path.join(src_path, '.github', 'workflows')
-                    if os.path.exists(github_workflows_path):
-                        print(f"Found .github/workflows in model_build folder")
-                        # Create .github directory if it doesn't exist
-                        dst_github_dir = os.path.join(self.private_repo_path, '.github')
-                        if not os.path.exists(dst_github_dir):
-                            os.makedirs(dst_github_dir)
+                        # Copy model_build contents
+                        for item in os.listdir(model_build_path):
+                            src_item = os.path.join(model_build_path, item)
+                            dst_item = os.path.join(self.private_repo_path, item)
+                            
+                            if os.path.isdir(src_item):
+                                if os.path.exists(dst_item):
+                                    shutil.rmtree(dst_item)
+                                shutil.copytree(src_item, dst_item)
+                            else:
+                                shutil.copy2(src_item, dst_item)
                         
-                        # Create workflows directory if it doesn't exist
-                        dst_workflows_dir = os.path.join(dst_github_dir, 'workflows')
-                        if not os.path.exists(dst_workflows_dir):
-                            os.makedirs(dst_workflows_dir)
+                        # Check for .github/workflows in model_build
+                        github_workflows_path = os.path.join(model_build_path, '.github', 'workflows')
+                        if os.path.exists(github_workflows_path):
+                            print(f"Found .github/workflows in model_build folder")
+                            dst_github_dir = os.path.join(self.private_repo_path, '.github')
+                            if not os.path.exists(dst_github_dir):
+                                os.makedirs(dst_github_dir)
+                            
+                            dst_workflows_dir = os.path.join(dst_github_dir, 'workflows')
+                            if not os.path.exists(dst_workflows_dir):
+                                os.makedirs(dst_workflows_dir)
+                            
+                            # Copy workflow files
+                            for workflow_file in os.listdir(github_workflows_path):
+                                src_workflow = os.path.join(github_workflows_path, workflow_file)
+                                dst_workflow = os.path.join(dst_workflows_dir, workflow_file)
+                                if os.path.isfile(src_workflow):
+                                    shutil.copy2(src_workflow, dst_workflow)
+                                    print(f"Copied workflow file: {workflow_file}")
                         
-                        # Copy workflow files
-                        for workflow_file in os.listdir(github_workflows_path):
-                            src_workflow = os.path.join(github_workflows_path, workflow_file)
-                            dst_workflow = os.path.join(dst_workflows_dir, workflow_file)
-                            if os.path.isfile(src_workflow):
-                                shutil.copy2(src_workflow, dst_workflow)
-                                print(f"Copied workflow file: {workflow_file}")
-                    
-                    build_folder_found = True
-                    break
-            
+                        build_folder_found = True
+
             if not build_folder_found:
-                raise Exception(f"model_build folder not found in {self.profile_name} repository")
+                raise Exception(f"model_build folder not found in expected path: {self.public_aiops_code_folder}/{self.profile_name}/")
 
             # Force add .github directory to ensure it's included in the commit
             if os.path.exists(os.path.join(self.private_repo_path, '.github')):
@@ -180,11 +186,6 @@ class GitOperations:
         except Exception as e:
             print(f"Error in sync_model_build_folder: {str(e)}")
             raise
-
-        finally:
-            # Cleanup source repository
-            if os.path.exists(self.source_repo_path):
-                shutil.rmtree(self.source_repo_path)
 
     def commit_and_push_changes(self):
         try:
@@ -567,9 +568,11 @@ def lambda_handler(event, context):
 
         # Initialize GitOperations
         git_ops = GitOperations(
-            org_url=f"https://github.com/{os.environ['PUBLIC_AIOPS_TEMPLATES_ORG']}",
+            org_name=os.environ['PUBLIC_SMUS_AIOPS_ORG'],
+            repo_name=os.environ['PUBLIC_SMUS_AIOPS_ORG_REPO'], 
             profile_name=profile_name,
-            private_repo=git_params['gitFullRepositoryId']
+            private_repo=git_params['gitFullRepositoryId'],
+            public_aiops_code_folder=os.environ['PUBLIC_SMUS_AIOPS_ORG_REPO_FOLDER']
         )
 
         # Create GitHub secrets first
@@ -594,7 +597,7 @@ def lambda_handler(event, context):
             'additionalInfo': {
                 'profileName': profile_name,
                 'projectName': project_name,
-                'sourceRepo': f"https://github.com/{os.environ['PUBLIC_AIOPS_TEMPLATES_ORG']}/{profile_name}",
+                'sourceRepo': f"https://github.com/{os.environ['PUBLIC_SMUS_AIOPS_ORG']}/{os.environ['PUBLIC_SMUS_AIOPS_ORG_REPO']}",
                 'message': f'Successfully created GitHub secrets and {commit_message.lower()}',
                 'secretsCreated': list(secrets.keys()),
                 'domainUnitId': datazone_details['domain_unit_id'],

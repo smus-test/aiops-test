@@ -74,20 +74,28 @@ def create_github_secrets(repo_full_name, secrets_data, git_token):
 def find_template_repository(project_profile_name):
     """Find template repository based on project profile name"""
     try:
-        # Get public git org name from environment variable
-        public_templates_org = os.environ['PUBLIC_AIOPS_TEMPLATES_ORG']
+        public_templates_org = os.environ['PUBLIC_SMUS_AIOPS_ORG']
+        public_templates_repo = os.environ['PUBLIC_SMUS_AIOPS_ORG_REPO']
+        aiops_code_folder = os.environ['PUBLIC_SMUS_AIOPS_ORG_REPO_FOLDER']
         
         # Convert profile name to lowercase for consistency
         project_profile_name = project_profile_name.lower()
+
+        print(f"\nLooking for template in:")
+        print(f"Organization: {public_templates_org}")
+        print(f"Repository: {public_templates_repo}")
+        print(f"Code Folder: {aiops_code_folder}")
+        print(f"Profile Name: {project_profile_name}")
+
+        
         
         # Construct the template repository URL
-        template_repo_url = f"https://github.com/{public_templates_org}/{project_profile_name}.git"
+        template_repo_url = f"https://github.com/{public_templates_org}/{public_templates_repo}.git"
         print(f"\nUsing template repository: {template_repo_url}")
 
-        # Optionally verify the repository exists (since it's public)
-        verify_url = f"https://api.github.com/repos/{public_templates_org}/{project_profile_name}"
+        #  verify the repository exists
+        verify_url = f"https://api.github.com/repos/{public_templates_org}/{public_templates_repo}"
         response = requests.get(verify_url)
-        
         if response.status_code != 200:
             raise Exception(f"Template repository not found: {template_repo_url}")
             
@@ -97,7 +105,7 @@ def find_template_repository(project_profile_name):
         print(f"Error finding template repository: {str(e)}")
         raise
 
-def copy_template_content(template_repo_url, deploy_repo_name, git_token):
+def copy_template_content(template_repo_url, deploy_repo_name, git_token, profile_name):
     """Copy model_deploy folder contents from template to new repository"""
     work_dir = '/tmp'
     template_repo_path = os.path.join(work_dir, 'template_repo')
@@ -131,45 +139,48 @@ def copy_template_content(template_repo_url, deploy_repo_name, git_token):
 
         # Configure git locally for the deploy repository
         subprocess.run(
-            ['git', 'config', 'user.name', 'SMUS-MLOPS'],
+            ['git', 'config', 'user.name', 'SMUS-AIOPS'],
             cwd=deploy_repo_path,
             check=True
         )
         subprocess.run(
-            ['git', 'config', 'user.email', 'smus-mlops@example.com'],
+            ['git', 'config', 'user.email', 'smus-aiops@example.com'],
             cwd=deploy_repo_path,
             check=True
         )
 
         # Find and copy model_deploy folder
-        deploy_folder_found = False
-        for root, dirs, _ in os.walk(template_repo_path):
-            if 'model_deploy' in dirs:
-                src_path = os.path.join(root, 'model_deploy')
-                print(f"Found model_deploy folder at: {src_path}")
-                
-                # Copy contents
-                for item in os.listdir(src_path):
-                    src_item = os.path.join(src_path, item)
-                    dst_item = os.path.join(deploy_repo_path, item)
-                    
-                    if os.path.isdir(src_item):
-                        if os.path.exists(dst_item):
-                            shutil.rmtree(dst_item)
-                        shutil.copytree(src_item, dst_item)
-                    else:
-                        shutil.copy2(src_item, dst_item)
-                
-                deploy_folder_found = True
-                break
+        aiops_code_folder = os.environ['PUBLIC_SMUS_AIOPS_ORG_REPO_FOLDER']
+        src_path = os.path.join(template_repo_path, aiops_code_folder, profile_name, 'model_deploy')
 
-        if not deploy_folder_found:
-            raise Exception("model_deploy folder not found in template repository")
+        if not os.path.exists(os.path.join(template_repo_path, aiops_code_folder)):
+            raise Exception(f"Code folder '{aiops_code_folder}' not found in template repository")
+
+        if not os.path.exists(os.path.join(template_repo_path, aiops_code_folder, profile_name)):
+            raise Exception(f"Profile folder '{profile_name}' not found in {aiops_code_folder}")
+
+        if not os.path.exists(src_path):
+            raise Exception(f"model_deploy folder not found in {aiops_code_folder}/{profile_name}/")
+
+        
+        print(f"Found model_deploy folder at: {src_path}")
+        
+        # Copy contents
+        for item in os.listdir(src_path):
+            src_item = os.path.join(src_path, item)
+            dst_item = os.path.join(deploy_repo_path, item)
+            
+            if os.path.isdir(src_item):
+                if os.path.exists(dst_item):
+                    shutil.rmtree(dst_item)
+                shutil.copytree(src_item, dst_item)
+            else:
+                shutil.copy2(src_item, dst_item)
 
         # Commit and push changes
         subprocess.run(['git', 'add', '-A'], cwd=deploy_repo_path, check=True)
         subprocess.run(
-            ['git', 'commit', '-m', 'Initial setup - Copying model_deploy folder contents'],
+            ['git', 'commit', '-m', 'Initial setup - Copying model_deploy folder contents from {profile_name}'],
             cwd=deploy_repo_path,
             check=True
         )
@@ -274,7 +285,7 @@ def lambda_handler(event, context):
         print(f"Found template repository: {template_repo_url}")
 
         # Copy template content
-        copy_template_content(template_repo_url, deploy_repo, git_token)
+        copy_template_content(template_repo_url, deploy_repo, git_token, profile_name)
         
         return {
             'statusCode': 200,
