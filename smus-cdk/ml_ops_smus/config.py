@@ -32,7 +32,7 @@ class GitConfig:
 
 # Single configuration instance
 config = GitConfig(
-    public_aiops_templates_org="smus-test",
+    public_aiops_templates_org="smus-test/aiops-test",
     public_repo_branch="main",
     oidc_role_github_workflow="aiops-smus-github-action",
     private_github_organization ="smus-test", # IMPORTANT: This should match the GitHub organization configured in your AWS CodeStar Connections and we will be creating our build and deploy repo under this git organization.
