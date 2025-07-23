@@ -121,7 +121,7 @@ class ModelApprovalLambdaConstruct(Construct):
                 "source": ["aws.sagemaker"],
                 "detail-type": ["SageMaker Model Package State Change"],
                 "detail": {
-                    "currentModelPackageStatus": ["Approved"]
+                    "ModelApprovalStatus": ["Approved"]
                 }
             },
             targets=[{
