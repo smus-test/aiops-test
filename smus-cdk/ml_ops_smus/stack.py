@@ -79,6 +79,7 @@ class RepoSyncStack(Stack):
                     "sagemaker:ListTags",
                     "sagemaker:ListProcessingJobs",
                     "sagemaker:DescribeProcessingJob",
+                    "sagemaker:DescribeImageVersion",
                     "sagemaker:CreateProcessingJob",
                     "sagemaker:StopProcessingJob"
                 ],
