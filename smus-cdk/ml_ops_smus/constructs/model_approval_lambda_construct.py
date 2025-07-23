@@ -29,8 +29,10 @@ class ModelApprovalLambdaConstruct(Construct):
             dependency_layer=dependency_layer
         )
 
+        events_role = self.create_events_role()
+
         # Create EventBridge rule using L1 construct
-        self.event_rule = self.create_event_rule()
+        self.event_rule = self.create_event_rule(events_role)
 
         # Create outputs
         self.create_outputs()
@@ -93,7 +95,22 @@ class ModelApprovalLambdaConstruct(Construct):
             role=role
         )
 
-    def create_event_rule(self):
+    def create_events_role(self):
+        events_role = iam.Role(
+            self, 'EventBridgeInvokeLambdaRole',
+            assumed_by=iam.ServicePrincipal('events.amazonaws.com'),
+            description='Role for EventBridge to invoke Lambda function'
+        )
+
+        events_role.add_to_policy(iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=['lambda:InvokeFunction'],
+            resources=[self.lambda_function.function_arn]
+        ))
+
+        return events_role
+
+    def create_event_rule(self, events_role: iam.Role):
         # Create EventBridge rule using L1 construct
         rule = CfnRule(
             self, 'ModelApprovalRule',
@@ -104,22 +121,14 @@ class ModelApprovalLambdaConstruct(Construct):
                 "source": ["aws.sagemaker"],
                 "detail-type": ["SageMaker Model Package State Change"],
                 "detail": {
-                    "modelApprovalStatus": ["Approved"]
+                    "currentModelPackageStatus": ["Approved"]
                 }
             },
             targets=[{
                 'id': 'ModelApprovalLambda',
-                'arn': self.lambda_function.function_arn
+                'arn': self.lambda_function.function_arn,
+                'roleArn': events_role.role_arn
             }]
-        )
-
-        # Add permission for EventBridge to invoke Lambda
-        CfnPermission(
-            self, 'ModelApprovalLambdaPermission',
-            action='lambda:InvokeFunction',
-            function_name=self.lambda_function.function_name,
-            principal='events.amazonaws.com',
-            source_arn=rule.attr_arn
         )
 
         return rule

@@ -44,7 +44,12 @@ class RepoSyncStack(Stack):
             print(f"Role {role_name} not found. Creating new role...")
             account_id = Aws.ACCOUNT_ID
             github_org = config.private_github_organization
-
+            # Create the OIDC Provider 
+            github_provider = iam.OpenIdConnectProvider(
+                self, "GitHubProvider",
+                url="https://token.actions.githubusercontent.com",
+                client_ids=["sts.amazonaws.com"]
+            )
             github_workflow_role = iam.Role(
                 self, "GitHubWorkflowRole",
                 role_name=role_name,
