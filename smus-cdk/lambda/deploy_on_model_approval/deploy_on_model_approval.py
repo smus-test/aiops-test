@@ -25,13 +25,8 @@ class DateTimeEncoder(json.JSONEncoder):
 def lambda_handler(event, context):
     try:
         print("Received event:", json.dumps(event, indent=2))
-        
-        # Extract project ID from ModelPackageGroupName
         model_package_group_name = event['detail']['ModelPackageGroupName']
-        project_id = model_package_group_name.split('-')[1]
         
-        print(f"Extracted project_id: {project_id}")
-
         # Get tags for the model package group
         account_id = event['account']
         region = event['region']
@@ -44,17 +39,21 @@ def lambda_handler(event, context):
         
         print("SageMaker Tags Response:", json.dumps(tags_response, indent=2, cls=DateTimeEncoder))
         
-        # Extract domain ID from tags
+        # Extract project_id, domain ID from tags
+        project_id = None
         domain_id = None
         for tag in tags_response.get('Tags', []):
             if tag['Key'] == 'AmazonDataZoneDomain':
                 domain_id = tag['Value']
-                break
+            if tag['Key'] == 'sagemaker:project-id':
+                project_id = tag['Value']
                 
+        if not project_id:
+            raise ValueError("Could not find sagemaker:project-id tag in model package group tags")       
         if not domain_id:
             raise ValueError("Could not find AmazonDataZoneDomain tag in model package group tags")
         
-        print(f"Found domain_id: {domain_id} from model package group tags")
+        print(f"Found project_id: {project_id} and domain_id: {domain_id} from model package group tags")
 
         # Construct repository name using organization from environment variable
         private_organization_name = os.environ.get('PRIVATE_GITHUB_ORGANIZATION')
@@ -69,8 +68,13 @@ def lambda_handler(event, context):
         secrets_response = secrets_client.get_secret_value(SecretId=secret_name)
         git_token = json.loads(secrets_response['SecretString'])['token']
         
+        print(f"Organization name: {private_organization_name}")
+        print(f"Repository name: {repo_name}")
+        print(f"Workflow filename: {WORKFLOW_FILENAME}")
+
         # GitHub API endpoint
         url = f'https://api.github.com/repos/{private_organization_name}/{repo_name}/actions/workflows/{WORKFLOW_FILENAME}/dispatches'
+        print(f"Complete GitHub API URL: {url}")
 
         # Headers for GitHub API
         headers = {
@@ -92,6 +96,9 @@ def lambda_handler(event, context):
         # Trigger the workflow
         github_response = requests.post(url, headers=headers, data=json.dumps(payload))
         
+        print(f"Response status code: {github_response.status_code}")
+        print(f"Response body: {github_response.text}")
+
         if github_response.status_code == 204:
             print(f"Successfully triggered GitHub workflow for model {model_package_group_name}")
             return {
