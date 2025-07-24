@@ -269,6 +269,7 @@ def lambda_handler(event, context):
             "REGION": region,
             "ARTIFACT_BUCKET":sagemaker_info.get('artifact_bucket'),
             "MODEL_PACKAGE_GROUP_NAME": f"{project_id}-models",
+            "DEPLOY_ACCOUNT": deploy_account,
             "GLUE_DATABASE": "glue_db", # default value
             "GLUE_TABLE": "abalone" # default value
         }

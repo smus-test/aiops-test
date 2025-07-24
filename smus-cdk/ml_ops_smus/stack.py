@@ -92,19 +92,89 @@ class RepoSyncStack(Stack):
                 ],
                 resources=["*"]
             ))
-            
+            # Add cloudformation stack permissions
+            github_workflow_role.add_to_policy(iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "cloudformation:ListStacks",
+                    "cloudformation:DescribeStacks",
+                    "cloudformation:CreateStack",
+                    "cloudformation:UpdateStack",
+                    "cloudformation:DeleteStack",
+                    "cloudformation:ListStackResources",
+                    "cloudformation:DescribeStackEvents",
+                    "cloudformation:GetTemplateSummary",
+                    "cloudformation:ValidateTemplate",
+                    "cloudformation:GetTemplate",
+                    "cloudformation:CreateChangeSet",
+                    "cloudformation:DeleteChangeSet",
+                    "cloudformation:ListChangeSets",
+                    "cloudformation:DescribeChangeSet",
+                    "cloudformation:ExecuteChangeSet",
+                    "cloudformation:SetStackPolicy",
+                    "cloudformation:DescribeStackResource"
+                ],
+                resources=["*"]
+            ))
+            # Add ECR permissions
+            github_workflow_role.add_to_policy(iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "ecr:CreateRepository",
+                    "ecr:DeleteRepository",
+                    "ecr:DescribeRepositories",
+                    "ecr:PutLifecyclePolicy",
+                    "ecr:SetRepositoryPolicy"
+                ],
+                resources=["*"]
+            ))
+            # Add SSM permissions
+            github_workflow_role.add_to_policy(iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "ssm:*"
+                ],
+                resources=["arn:aws:ssm:*:*:parameter/cdk-bootstrap/*"]
+            ))
+            # Add IAM permissions
+            github_workflow_role.add_to_policy(iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "iam:CreateRole",
+                    "iam:Get*",
+                    "iam:Delete*",
+                    "iam:List*",
+                    "iam:Put*",
+                    "iam:Tag*",
+                    "iam:Attach*",
+                    "iam:Detach*",
+                    "iam:Update*"
+                ],
+                resources=["*"]
+            ))
             # Add S3 permissions
             github_workflow_role.add_to_policy(iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 actions=[
-                    "s3:PutObject",
-                    "s3:GetObject",
-                    "s3:ListBucket",
-                    "s3:CreateBucket"
+                    "s3:Put*",
+                    "s3:Get*",
+                    "s3:List*",
+                    "s3:Create*",
+                    "s3:Delete*"
                 ],
                 resources=["*"]
             ))
-            
+            # Assume role permissions
+            github_workflow_role.add_to_policy(iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "sts:AssumeRole"
+                ],
+                resources=[
+                    "arn:aws:iam::*:role/cdk-*",
+                    "arn:aws:iam::*:role/cdk-gitactions-*"
+                ]
+            ))
             # Add Glue permissions
             github_workflow_role.add_to_policy(iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
