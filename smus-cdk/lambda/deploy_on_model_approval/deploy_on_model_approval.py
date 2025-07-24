@@ -4,6 +4,16 @@ import requests
 import os
 from datetime import datetime
 
+# Name of the GitHub Actions workflow file that handles model deployment
+# NOTE: When a deploy repository is created, it's populated with seed code from the template
+#       which includes 'deploy_model_pipeline.yml'. This workflow is triggered when a 
+#       SageMaker model is approved, and it handles:
+#       - Creating/Updating SageMaker endpoints
+#       - Model deployment and testing
+#       - Other deployment-related tasks
+# IMPORTANT: If you modify the workflow filename in your template or deploy repositories,
+#           update this value accordingly
+
 WORKFLOW_FILENAME = 'deploy_model_pipeline.yml'
 
 class DateTimeEncoder(json.JSONEncoder):
