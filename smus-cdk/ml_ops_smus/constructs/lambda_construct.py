@@ -268,7 +268,7 @@ class LambdaConstruct(Construct):
             self,
             'StateMachine',
             definition=definition,
-            timeout=Duration.hours(2),
+            timeout=Duration.hours(3),
             state_machine_name="ml-ops-project-setup"
         )
 
