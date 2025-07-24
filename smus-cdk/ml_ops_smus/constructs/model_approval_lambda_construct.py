@@ -62,7 +62,9 @@ class ModelApprovalLambdaConstruct(Construct):
             actions=[
                 'datazone:ListProjects',
                 'datazone:GetProject',
-                'datazone:GetDomain'
+                'datazone:GetDomain',
+                'sagemaker:ListTags'
+
             ],
             resources=['*']
         ))
