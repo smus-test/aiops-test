@@ -15,22 +15,27 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from aws_cdk import App, Environment
 from deploy_endpoint.deploy_endpoint_stack import DeployEndpointStack
 from config.constants import (
-    DEFAULT_DEPLOYMENT_REGION,
     DEPLOY_ACCOUNT,
-    PROJECT_ID,
-    PROJECT_NAME,
-    AMAZON_DATAZONE_DOMAIN,
+    DEFAULT_DEPLOYMENT_REGION,
     AMAZON_DATAZONE_SCOPENAME,
     AMAZON_DATAZONE_PROJECT
 )
-import aws_cdk as cdk
 
-app = cdk.App()
 
-dev_env = cdk.Environment(account=DEPLOY_ACCOUNT, region=DEFAULT_DEPLOYMENT_REGION)
+app = App()
 
-DeployEndpointStack(app, f"{AMAZON_DATAZONE_SCOPENAME}-{DEPLOY_ACCOUNT}-{AMAZON_DATAZONE_PROJECT}", env=dev_env)
+dev_env = Environment(
+    account=DEPLOY_ACCOUNT,
+    region=DEFAULT_DEPLOYMENT_REGION
+)
+
+DeployEndpointStack(
+    app, 
+    f"sagemaker-{AMAZON_DATAZONE_PROJECT}", 
+    env=dev_env
+)
 
 app.synth()
