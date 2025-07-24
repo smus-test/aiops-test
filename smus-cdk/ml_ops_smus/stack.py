@@ -87,6 +87,7 @@ class RepoSyncStack(Stack):
                     "sagemaker:DescribeImageVersion",
                     "sagemaker:CreateProcessingJob",
                     "sagemaker:ListPipelineExecutionSteps",
+                    "sagemaker:ListModelPackages",
                     "sagemaker:StopProcessingJob"
                 ],
                 resources=["*"]
