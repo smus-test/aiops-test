@@ -526,7 +526,7 @@ def lambda_handler(event, context):
                         'spaceArn': sagemaker_details.get('space_arn'),
                         'UPNArn': sagemaker_details.get('user_profile_arn'),
                         'executionRole': sagemaker_details['execution_role'],
-                        'modelPackageGroup': f"{project_id}-models"
+                        'modelPackageGroup': f"aiops-{project_id}-models"
                     }
                 }
             }
@@ -557,7 +557,7 @@ def lambda_handler(event, context):
             "AMAZON_DATAZONE_PROJECT": project_id,     
             "REGION": region,
             "ARTIFACT_BUCKET": artifact_bucket_name,
-            "MODEL_PACKAGE_GROUP_NAME": f"{project_id}-models",
+            "MODEL_PACKAGE_GROUP_NAME": f"aiops-{project_id}-models",
             "GLUE_DATABASE": "glue_db",
             "GLUE_TABLE": "abalone"
         }
@@ -607,7 +607,7 @@ def lambda_handler(event, context):
                     'spaceArn': sagemaker_details['space_arn'],
                     'UPNArn': sagemaker_details['user_profile_arn'],
                     'executionRole': sagemaker_details['execution_role'],
-                    'modelPackageGroup': f"{project_id}-models",
+                    'modelPackageGroup': f"aiops-{project_id}-models",
                     'artifact_bucket': artifact_bucket_name
                 }
             }
