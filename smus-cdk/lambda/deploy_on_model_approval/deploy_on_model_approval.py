@@ -1,22 +1,16 @@
-# lambda/deploy_on_model_approval/deploy_on_model_approval.py
-
 import json
 import boto3
 import requests
 import os
-
-
-# Name of the GitHub Actions workflow file that handles model deployment
-# NOTE: When a deploy repository is created, it's populated with seed code from the template
-#       which includes 'deploy_model_pipeline.yml'. This workflow is triggered when a 
-#       SageMaker model is approved, and it handles:
-#       - Creating/Updating SageMaker endpoints
-#       - Model deployment and testing
-#       - Other deployment-related tasks
-# IMPORTANT: If you modify the workflow filename in your template or deploy repositories,
-#           update this value accordingly
+from datetime import datetime
 
 WORKFLOW_FILENAME = 'deploy_model_pipeline.yml'
+
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
 def lambda_handler(event, context):
     try:
@@ -24,32 +18,46 @@ def lambda_handler(event, context):
         
         # Extract project ID from ModelPackageGroupName
         model_package_group_name = event['detail']['ModelPackageGroupName']
-        project_id = model_package_group_name.split('-models')[0]
+        project_id = model_package_group_name.split('-')[1]
         
-        # Get DataZone details
-        datazone_client = boto3.client('datazone')
+        print(f"Extracted project_id: {project_id}")
+
+        # Get tags for the model package group
+        account_id = event['account']
+        region = event['region']
+        model_package_group_arn = f"arn:aws:sagemaker:{region}:{account_id}:model-package-group/{model_package_group_name}"
         
-        # List projects to find the domain ID for our project
-        projects_response = datazone_client.list_projects()
+        sagemaker_client = boto3.client('sagemaker')
+        tags_response = sagemaker_client.list_tags(
+            ResourceArn=model_package_group_arn
+        )
+        
+        print("SageMaker Tags Response:", json.dumps(tags_response, indent=2, cls=DateTimeEncoder))
+        
+        # Extract domain ID from tags
         domain_id = None
-        
-        for project in projects_response.get('projects', []):
-            if project['identifier'] == project_id:
-                domain_id = project['domainIdentifier']
+        for tag in tags_response.get('Tags', []):
+            if tag['Key'] == 'AmazonDataZoneDomain':
+                domain_id = tag['Value']
                 break
                 
         if not domain_id:
-            raise ValueError(f"Could not find domain ID for project: {project_id}")
+            raise ValueError("Could not find AmazonDataZoneDomain tag in model package group tags")
+        
+        print(f"Found domain_id: {domain_id} from model package group tags")
 
         # Construct repository name using organization from environment variable
         private_organization_name = os.environ.get('PRIVATE_GITHUB_ORGANIZATION')
+        if not private_organization_name:
+            raise ValueError("PRIVATE_GITHUB_ORGANIZATION environment variable is not set")
+            
         repo_name = f"{project_id}-{domain_id}-deploy-repo"
         
         # Get GitHub token from Secrets Manager
         secret_name = os.environ['GITHUB_TOKEN_SECRET_NAME']
         secrets_client = boto3.client('secretsmanager')
-        response = secrets_client.get_secret_value(SecretId=secret_name)
-        git_token = json.loads(response['SecretString'])['token']
+        secrets_response = secrets_client.get_secret_value(SecretId=secret_name)
+        git_token = json.loads(secrets_response['SecretString'])['token']
         
         # GitHub API endpoint
         url = f'https://api.github.com/repos/{private_organization_name}/{repo_name}/actions/workflows/{WORKFLOW_FILENAME}/dispatches'
@@ -61,22 +69,20 @@ def lambda_handler(event, context):
             'Content-Type': 'application/json'
         }
 
-        # Payload for the workflow
+        # Payload for the workflow - only including the required logLevel input
         payload = {
             'ref': 'main',
             'inputs': {
-                'model_name': event['detail']['ModelPackageName'],
-                'model_package_group_name': model_package_group_name,
-                'model_package_arn': event['detail']['ModelPackageArn'],
-                'project_id': project_id,
-                'domain_id': domain_id
+                'logLevel': 'info'
             }
         }
 
+        print(f"Triggering GitHub workflow with payload: {json.dumps(payload, indent=2)}")
+
         # Trigger the workflow
-        response = requests.post(url, headers=headers, data=json.dumps(payload))
+        github_response = requests.post(url, headers=headers, data=json.dumps(payload))
         
-        if response.status_code == 204:
+        if github_response.status_code == 204:
             print(f"Successfully triggered GitHub workflow for model {model_package_group_name}")
             return {
                 'statusCode': 200,
@@ -89,7 +95,7 @@ def lambda_handler(event, context):
                 })
             }
         else:
-            error_message = f"Failed to trigger workflow. Status code: {response.status_code}, Response: {response.text}"
+            error_message = f"Failed to trigger workflow. Status code: {github_response.status_code}, Response: {github_response.text}"
             print(error_message)
             raise Exception(error_message)
 
