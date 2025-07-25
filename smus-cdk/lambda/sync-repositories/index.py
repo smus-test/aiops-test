@@ -457,7 +457,7 @@ def lambda_handler(event, context):
         project_details = event_data.get('projectDetails', {})
         project_profile_id = project_details.get('projectProfileId')
         user_params = event_data.get('userParameters', [])
-        
+        model_package_group_name = f"aiops-{project_id}-models"
         # Get current region from Lambda environment
         region = boto3.session.Session().region_name
         
@@ -526,7 +526,7 @@ def lambda_handler(event, context):
                         'spaceArn': sagemaker_details.get('space_arn'),
                         'UPNArn': sagemaker_details.get('user_profile_arn'),
                         'executionRole': sagemaker_details['execution_role'],
-                        'modelPackageGroup': f"aiops-{project_id}-models"
+                        'modelPackageGroup': model_package_group_name
                     }
                 }
             }
@@ -557,7 +557,7 @@ def lambda_handler(event, context):
             "AMAZON_DATAZONE_PROJECT": project_id,     
             "REGION": region,
             "ARTIFACT_BUCKET": artifact_bucket_name,
-            "MODEL_PACKAGE_GROUP_NAME": f"aiops-{project_id}-models",
+            "MODEL_PACKAGE_GROUP_NAME": model_package_group_name
             "GLUE_DATABASE": "glue_db",
             "GLUE_TABLE": "abalone"
         }
@@ -607,7 +607,7 @@ def lambda_handler(event, context):
                     'spaceArn': sagemaker_details['space_arn'],
                     'UPNArn': sagemaker_details['user_profile_arn'],
                     'executionRole': sagemaker_details['execution_role'],
-                    'modelPackageGroup': f"aiops-{project_id}-models",
+                    'modelPackageGroup': model_package_group_name,
                     'artifact_bucket': artifact_bucket_name
                 }
             }

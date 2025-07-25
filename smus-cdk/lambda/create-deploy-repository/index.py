@@ -219,6 +219,7 @@ def lambda_handler(event, context):
         project_name = additional_info.get('projectName')
         domain_unit_id = additional_info.get('domainUnitId')
         sagemaker_info = additional_info.get('sagemaker', {})
+        model_package_group_name = sagemaker_info.get('modelPackageGroup')
         deploy_account = additional_info.get('deployAcct')
         
         # Get current region from Lambda environment
@@ -268,7 +269,7 @@ def lambda_handler(event, context):
             "AMAZON_DATAZONE_PROJECT": project_id,     
             "REGION": region,
             "ARTIFACT_BUCKET":sagemaker_info.get('artifact_bucket'),
-            "MODEL_PACKAGE_GROUP_NAME": f"{project_id}-models",
+            "MODEL_PACKAGE_GROUP_NAME": model_package_group_name,
             "DEPLOY_ACCOUNT": deploy_account,
             "GLUE_DATABASE": "glue_db", # default value
             "GLUE_TABLE": "abalone" # default value
