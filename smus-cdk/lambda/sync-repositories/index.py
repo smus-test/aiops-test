@@ -557,7 +557,7 @@ def lambda_handler(event, context):
             "AMAZON_DATAZONE_PROJECT": project_id,     
             "REGION": region,
             "ARTIFACT_BUCKET": artifact_bucket_name,
-            "MODEL_PACKAGE_GROUP_NAME": model_package_group_name
+            "MODEL_PACKAGE_GROUP_NAME": model_package_group_name,
             "GLUE_DATABASE": "glue_db",
             "GLUE_TABLE": "abalone"
         }
