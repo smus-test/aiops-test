@@ -3,6 +3,7 @@ from aws_cdk import (
     aws_events as events,
     aws_events_targets as targets,
     aws_iam as iam,
+    custom_resources as cr,
     aws_secretsmanager as secretsmanager,
     RemovalPolicy,
     Aws,
@@ -21,35 +22,50 @@ class RepoSyncStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         role_name = config.oidc_role_github_workflow
-        
+        account_id = Aws.ACCOUNT_ID
+        github_org = config.private_github_organization
 
-        if not role_name:
-            raise ValueError("OIDC role name for GitHub workflow is not provided in the config.")
-
-        print(f"Using role name from config: {role_name}")
-        iam_client = boto3.client('iam')
+        # Custom resource to check if role exists
+        check_role_exists = cr.AwsCustomResource(
+            self, "CheckRoleExists",
+            on_create=cr.AwsSdkCall(
+                service="IAM",
+                action="getRole",
+                parameters={"RoleName": role_name},
+                physical_resource_id=cr.PhysicalResourceId.of(f"{role_name}-exists"),
+                ignore_error_codes_matching="NoSuchEntity"
+            ),
+            on_update=cr.AwsSdkCall(
+                service="IAM",
+                action="getRole",
+                parameters={"RoleName": role_name},
+                physical_resource_id=cr.PhysicalResourceId.of(f"{role_name}-exists"),
+                ignore_error_codes_matching="NoSuchEntity"
+            ),
+            policy=cr.AwsCustomResourcePolicy.from_sdk_calls(resources=cr.AwsCustomResourcePolicy.ANY_RESOURCE)
+        )
 
         try:
-            iam_client.get_role(RoleName=role_name)
-            print(f"Using existing role: {role_name}")
+            check_role_exists.get_response_field("Role.Arn")
+            print(f"Found existing role: {role_name}")
             github_workflow_role = iam.Role.from_role_name(
-                self, "ExistingGitHubWorkflowRole",
+                self, "GitHubWorkflowRole",
                 role_name=role_name
             )
-            print(f"Using existing role: {role_name}")
-            print(f"Role ARN: {github_workflow_role.role_arn}")
 
-        except iam_client.exceptions.NoSuchEntityException:
-            # Create role if it doesn't exist
-            print(f"Role {role_name} not found. Creating new role...")
-            account_id = Aws.ACCOUNT_ID
-            github_org = config.private_github_organization
+        except:
+
+            
+            print(f"Creating new IDP")
             # Create the OIDC Provider 
             github_provider = iam.OpenIdConnectProvider(
                 self, "GitHubProvider",
                 url="https://token.actions.githubusercontent.com",
                 client_ids=["sts.amazonaws.com"]
             )
+            github_provider.node.default_child.apply_removal_policy(RemovalPolicy.RETAIN)
+
+            print(f"Creating new role: {role_name}")
             github_workflow_role = iam.Role(
                 self, "GitHubWorkflowRole",
                 role_name=role_name,
@@ -71,6 +87,7 @@ class RepoSyncStack(Stack):
                     iam.AccountRootPrincipal()
                 )
             )
+            github_workflow_role.node.default_child.apply_removal_policy(RemovalPolicy.RETAIN)
             # Add policies for new role
             github_workflow_role.add_to_policy(iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
@@ -208,6 +225,7 @@ class RepoSyncStack(Stack):
                 ],
                 resources=["*"]
             ))
+            
         
         # Create base EventBridge role first
         events_role = iam.Role(
