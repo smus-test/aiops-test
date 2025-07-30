@@ -21,6 +21,7 @@ import logging
 import pathlib
 import pickle
 import tarfile
+import os
 
 import numpy as np
 import pandas as pd
@@ -32,12 +33,27 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
+def is_within_directory(directory, target):
+    """Check if the target is within the given directory."""
+    abs_directory = os.path.abspath(directory)
+    abs_target = os.path.abspath(target)
+    prefix = os.path.commonprefix([abs_directory, abs_target])
+    return prefix == abs_directory
+
+
+def safe_extract(tar, path="."):
+    """Extract tarfile members safely."""
+    for member in tar.getmembers():
+        member_path = os.path.join(path, member.name)
+        if not is_within_directory(path, member_path):
+            raise Exception("Attempted Path Traversal in Tar File")
+    tar.extractall(path)
 
 if __name__ == "__main__":
     logger.debug("Starting evaluation.")
     model_path = "/opt/ml/processing/model/model.tar.gz"
     with tarfile.open(model_path) as tar:
-        tar.extractall(path=".")
+        safe_extract(tar, path=".")
 
     logger.debug("Loading xgboost model.")
     model = pickle.load(open("xgboost-model", "rb"))
