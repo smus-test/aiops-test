@@ -33,20 +33,13 @@ permissions:
   contents: read
 
 jobs:
-  GitHub-Actions-SMUS-Build:
-
+  check-trigger:
     runs-on: ubuntu-latest
-
+    outputs:
+      pipeline_enabled: ${{ steps.check.outputs.pipeline_enabled }}
     steps:
-    - run: echo "The job was automatically triggered by a ${{ github.event_name }} event."
-    - run: echo "This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-    - run: echo "The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-    - run: echo "The commit message for the event -\n ${{ github.event.head_commit.message }}"
-    - uses: actions/checkout@v4
-    - name: Check out repository code
-      uses: actions/checkout@v4
-    
     - name: Check Pipeline Execution Trigger
+      id: check
       run: |
         TRIGGER_EXECUTION="${{ vars.TRIGGER_PIPELINE_EXECUTION }}"
         echo "Pipeline execution trigger status: ${TRIGGER_EXECUTION}"
@@ -60,10 +53,25 @@ jobs:
           echo "   4. Re-run this workflow or push new changes"
           echo ""
           echo "This prevents pipeline failures due to missing Glue configuration."
-          exit 0
+          echo "pipeline_enabled=false" >> $GITHUB_OUTPUT
+        else
+          echo "Pipeline execution is enabled. Proceeding with build..."
+          echo "pipeline_enabled=true" >> $GITHUB_OUTPUT
         fi
-        
-        echo "Pipeline execution is enabled. Proceeding with build..."
+
+  GitHub-Actions-SMUS-Build:
+    needs: check-trigger
+    if: needs.check-trigger.outputs.pipeline_enabled == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+    - run: echo "The job was automatically triggered by a ${{ github.event_name }} event."
+    - run: echo "This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+    - run: echo "The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+    - run: echo "The commit message for the event -\n ${{ github.event.head_commit.message }}"
+    - uses: actions/checkout@v4
+    - name: Check out repository code
+      uses: actions/checkout@v4
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
