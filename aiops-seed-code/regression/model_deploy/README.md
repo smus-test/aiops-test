@@ -24,6 +24,9 @@ This repository contains resources required to deploy approved ML models from Sa
 The model deployment process follows an event-driven architecture:
 1. **Model Approval** → EventBridge → Lambda → GitHub Actions → SageMaker Endpoint
 
+![mlops project architecture](diagrams/github_action_mlops_architecture.jpg)
+
+
 ## Repository Structure
 
 ```
