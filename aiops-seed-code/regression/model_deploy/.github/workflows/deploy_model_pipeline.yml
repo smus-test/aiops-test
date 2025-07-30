@@ -15,10 +15,6 @@ on:
           - info
           - warning
           - debug
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 permissions:
   id-token: write
