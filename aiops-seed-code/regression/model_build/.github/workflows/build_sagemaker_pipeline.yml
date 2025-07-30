@@ -45,6 +45,25 @@ jobs:
     - uses: actions/checkout@v4
     - name: Check out repository code
       uses: actions/checkout@v4
+    
+    - name: Check Pipeline Execution Trigger
+      run: |
+        TRIGGER_EXECUTION="${{ vars.TRIGGER_PIPELINE_EXECUTION }}"
+        echo "Pipeline execution trigger status: ${TRIGGER_EXECUTION}"
+        
+        if [ "$TRIGGER_EXECUTION" != "true" ]; then
+          echo "Pipeline execution is disabled."
+          echo "To enable pipeline execution:"
+          echo "   1. Update Glue database and table names in GitHub secrets"
+          echo "   2. Go to Settings → Secrets and variables → Actions → Variables tab"
+          echo "   3. Set TRIGGER_PIPELINE_EXECUTION variable to 'true'"
+          echo "   4. Re-run this workflow or push new changes"
+          echo ""
+          echo "This prevents pipeline failures due to missing Glue configuration."
+          exit 0
+        fi
+        
+        echo "Pipeline execution is enabled. Proceeding with build..."
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
@@ -94,13 +113,119 @@ jobs:
       run: |
         export PYTHONUNBUFFERED=TRUE
         export SAGEMAKER_PROJECT_NAME_ID="${SAGEMAKER_PROJECT_NAME}-${SAGEMAKER_PROJECT_ID}"
+        export PIPELINE_NAME="githubactions-${SAGEMAKER_PROJECT_ID}"
         
         echo "=== Starting Glue Catalog Pipeline ==="
         python ./ml_pipelines/run_pipeline.py \
           --module-name training.pipeline \
           --role-arn "${SAGEMAKER_PIPELINE_ROLE_ARN}" \
           --tags '[{"Key":"sagemaker:project-name", "Value":"'"${SAGEMAKER_PROJECT_NAME}"'"}, {"Key":"sagemaker:project-id", "Value":"'"${SAGEMAKER_PROJECT_ID}"'"}, {"Key":"AmazonDataZoneDomain", "Value":"'"${AMAZON_DATAZONE_DOMAIN}"'"}, {"Key":"AmazonDataZoneScopeName", "Value":"'"${AMAZON_DATAZONE_SCOPENAME}"'"}, {"Key":"sagemaker:domain-arn", "Value":"'"${SAGEMAKER_DOMAIN_ARN}"'"}, {"Key":"sagemaker:space-arn", "Value":"'"${SAGEMAKER_SPACE_ARN}"'"}, {"Key":"AmazonDataZoneProject", "Value":"'"${AMAZON_DATAZONE_PROJECT}"'"}]' \
-          --kwargs '{"region":"'"${REGION}"'","role":"'"${SAGEMAKER_PIPELINE_ROLE_ARN}"'","default_bucket":"'"${ARTIFACT_BUCKET}"'","pipeline_name":"githubactions-'"${SAGEMAKER_PROJECT_ID}"'","model_package_group_name":"'"${MODEL_PACKAGE_GROUP_NAME}"'","base_job_prefix":"SMUSMLOPS","glue_database_name":"'"${GLUE_DATABASE}"'","glue_table_name":"'"${GLUE_TABLE}"'"}'
+          --kwargs '{"region":"'"${REGION}"'","role":"'"${SAGEMAKER_PIPELINE_ROLE_ARN}"'","default_bucket":"'"${ARTIFACT_BUCKET}"'","pipeline_name":"'"${PIPELINE_NAME}"'","model_package_group_name":"'"${MODEL_PACKAGE_GROUP_NAME}"'","base_job_prefix":"SMUSMLOPS","glue_database_name":"'"${GLUE_DATABASE}"'","glue_table_name":"'"${GLUE_TABLE}"'"}'
         
-        echo "🌟 Success: Glue Catalog Pipeline execution completed."
+        echo "Pipeline started successfully. Pipeline name: ${PIPELINE_NAME}"
+        
+    - name: Monitor Pipeline Execution
+      env:
+        REGION: ${{ secrets.REGION }}
+        SAGEMAKER_PROJECT_ID: ${{ secrets.SAGEMAKER_PROJECT_ID }}
+      run: |
+        export PIPELINE_NAME="githubactions-${SAGEMAKER_PROJECT_ID}"
+        
+        echo "=== Monitoring Pipeline Execution ==="
+        echo "Pipeline Name: ${PIPELINE_NAME}"
+        
+        # Get the latest execution ARN
+        EXECUTION_ARN=$(aws sagemaker list-pipeline-executions \
+          --pipeline-name "${PIPELINE_NAME}" \
+          --region "${REGION}" \
+          --max-items 1 \
+          --query 'PipelineExecutionSummaries[0].PipelineExecutionArn' \
+          --output text)
+        
+        if [ "$EXECUTION_ARN" = "None" ] || [ -z "$EXECUTION_ARN" ]; then
+          echo "Error: Could not find pipeline execution"
+          exit 1
+        fi
+        
+        # Clean the ARN (remove any trailing whitespace or None)
+        EXECUTION_ARN=$(echo "$EXECUTION_ARN" | tr -d '\n' | sed 's/None$//')
+        
+        echo "Monitoring execution: ${EXECUTION_ARN}"
+        
+        # Validate ARN format
+        if [[ ! "$EXECUTION_ARN" =~ ^arn:aws[a-z\-]*:sagemaker:[a-z0-9\-]*:[0-9]{12}:pipeline/.*/execution/.* ]]; then
+          echo "Error: Invalid execution ARN format: ${EXECUTION_ARN}"
+          exit 1
+        fi
+        
+        # Monitor pipeline execution status
+        MAX_WAIT_TIME=3600  # 1 hour timeout
+        WAIT_INTERVAL=30    # Check every 30 seconds
+        ELAPSED_TIME=0
+        
+        while [ $ELAPSED_TIME -lt $MAX_WAIT_TIME ]; do
+          STATUS=$(aws sagemaker describe-pipeline-execution \
+            --pipeline-execution-arn "${EXECUTION_ARN}" \
+            --region "${REGION}" \
+            --query 'PipelineExecutionStatus' \
+            --output text)
+          
+          echo "Pipeline Status: ${STATUS} (Elapsed: ${ELAPSED_TIME}s)"
+          
+          case $STATUS in
+            "Succeeded")
+              echo "Pipeline execution completed successfully!"
+              
+              # Get execution details for summary
+              aws sagemaker describe-pipeline-execution \
+                --pipeline-execution-arn "${EXECUTION_ARN}" \
+                --region "${REGION}" \
+                --query '{Status: PipelineExecutionStatus, StartTime: CreationTime, EndTime: LastModifiedTime}' \
+                --output table
+              
+              echo "Success: Glue Catalog Pipeline execution completed successfully."
+              exit 0
+              ;;
+            "Failed"|"Stopped")
+              echo "Pipeline execution failed with status: ${STATUS}"
+              
+              # Get failure reason
+              FAILURE_REASON=$(aws sagemaker describe-pipeline-execution \
+                --pipeline-execution-arn "${EXECUTION_ARN}" \
+                --region "${REGION}" \
+                --query 'FailureReason' \
+                --output text)
+              
+              if [ "$FAILURE_REASON" != "None" ] && [ -n "$FAILURE_REASON" ]; then
+                echo "Failure Reason: ${FAILURE_REASON}"
+              fi
+              
+              # List failed steps for debugging
+              echo "=== Failed Pipeline Steps ==="
+              aws sagemaker list-pipeline-execution-steps \
+                --pipeline-execution-arn "${EXECUTION_ARN}" \
+                --region "${REGION}" \
+                --query 'PipelineExecutionSteps[?StepStatus==`Failed`].{StepName: StepName, Status: StepStatus, FailureReason: FailureReason}' \
+                --output table
+              
+              exit 1
+              ;;
+            "Executing"|"Stopping")
+              # Continue monitoring
+              sleep $WAIT_INTERVAL
+              ELAPSED_TIME=$((ELAPSED_TIME + WAIT_INTERVAL))
+              ;;
+            *)
+              echo "Unknown pipeline status: ${STATUS}"
+              sleep $WAIT_INTERVAL
+              ELAPSED_TIME=$((ELAPSED_TIME + WAIT_INTERVAL))
+              ;;
+          esac
+        done
+        
+        # Timeout reached
+        echo "Timeout: Pipeline execution exceeded maximum wait time of ${MAX_WAIT_TIME} seconds"
+        echo "Current status: ${STATUS}"
+        exit 1
+        
     - run: echo "This github action job's status is ${{ job.status }}."
