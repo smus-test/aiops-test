@@ -86,6 +86,40 @@ class GitOperations:
             print(f"Error creating GitHub secrets: {str(e)}")
             raise
 
+    def create_github_variables(self, variables_data):
+        """Create GitHub repository variables"""
+        try:
+            git_token = self._get_git_credentials()
+            
+            print("\nCreating GitHub repository variables...")
+            for variable_name, variable_value in variables_data.items():
+                if variable_value is not None:
+                    command = [
+                        '/opt/gh/gh', 'variable', 'set',
+                        variable_name,
+                        '--body', str(variable_value),
+                        '--repo', self.private_repo
+                    ]
+                    
+                    result = subprocess.run(
+                        command,
+                        capture_output=True,
+                        text=True,
+                        env={
+                            'GITHUB_TOKEN': git_token,
+                            'PATH': os.environ['PATH']
+                        }
+                    )
+                    
+                    if result.returncode == 0:
+                        print(f"Successfully created variable: {variable_name} = {variable_value}")
+                    else:
+                        raise Exception(f"Failed to create GitHub variable {variable_name}: {result.stderr}")
+        
+        except Exception as e:
+            print(f"Error creating GitHub variables: {str(e)}")
+            raise
+
     def sync_model_build_folder(self):
         try:
             # Clean up existing directories
@@ -578,6 +612,17 @@ def lambda_handler(event, context):
         # Create GitHub secrets first
         git_ops.create_github_secrets(secrets)
 
+        # Create GitHub repository variables
+        variables = {
+            "TRIGGER_PIPELINE_EXECUTION": "false"
+        }
+        
+        print("\nVariables to be created:")
+        for key, value in variables.items():
+            print(f"{key}: {value}")
+            
+        git_ops.create_github_variables(variables)
+
         # Then sync repositories and check for changes
         changes = git_ops.sync_model_build_folder()
 
@@ -598,8 +643,9 @@ def lambda_handler(event, context):
                 'profileName': profile_name,
                 'projectName': project_name,
                 'sourceRepo': f"https://github.com/{os.environ['PUBLIC_SMUS_AIOPS_ORG']}/{os.environ['PUBLIC_SMUS_AIOPS_ORG_REPO']}",
-                'message': f'Successfully created GitHub secrets and {commit_message.lower()}',
+                'message': f'Successfully created GitHub secrets, variables and {commit_message.lower()}',
                 'secretsCreated': list(secrets.keys()),
+                'variablesCreated': list(variables.keys()),
                 'domainUnitId': datazone_details['domain_unit_id'],
                 'deployAcct': account_id,
                 'sagemaker': {
