@@ -97,6 +97,7 @@ class RepoSyncStack(Stack):
                     "sagemaker:StartPipelineExecution",
                     "sagemaker:DescribePipeline",
                     "sagemaker:DescribePipelineExecution",
+                    "sagemaker:ListPipelineExecutions",
                     "sagemaker:AddTags",
                     "sagemaker:ListTags",
                     "sagemaker:ListProcessingJobs",
@@ -331,4 +332,3 @@ class RepoSyncStack(Stack):
             value=model_approval.event_rule.ref,
             description="Name of the Model Approval EventBridge rule"
         )
-
