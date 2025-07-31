@@ -20,7 +20,7 @@ model_build/
 
 ## Architecture Overview
 
-![aiops project architecture](../images/github_action_mlops_architecture.png)
+![aiops project architecture](../../images/github_action_mlops_architecture.png)
 
 The SMUS framework implements an event-driven architecture that automates the complete AIOps lifecycle through a sequential workflow, seamlessly connecting SageMaker Unified Studio project creation with production-ready infrastructure.
 
