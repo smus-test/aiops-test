@@ -476,7 +476,7 @@ After project creation, you need to create a Glue table with your data:
    - **Review the schema**
    - **Click "Create table"**
 
-> **Note:**: During table creation, make note of the Glue database and table names as you'll need them in the next step.
+> **Note:** During table creation, make note of the Glue database and table names as you'll need them in the next step.
 
 #### Update GitHub Secrets
 Update the GitHub secrets in both build and deploy repositories with these Glue database and table names:
