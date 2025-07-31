@@ -437,6 +437,7 @@ You need to create a custom project profile that will be used for your ML projec
 3. **In the SMUS home page, click "Create project"**
 4. **Configure project**:
    - **Project name**: Enter your project name (e.g., `smus-blog-test`)
+  > **Note:** Do not use underscore (_) in the project name as it will be used in SageMaker pipeline which doesn't support underscores
    - **Project profile**: Select `regression`
    - **Click "Continue"**
 5. **Customize blueprint parameters**:
