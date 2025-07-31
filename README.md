@@ -467,16 +467,16 @@ After project creation, you need to create a Glue table with your data:
 1. **Login to your project in SageMaker Unified Studio**
 2. **Navigate to Data → Lakehouse → awsdatacatalog**
 3. **Find your Glue database**: `glue_db_****`
-4. **Click the table tile option on the side**
+4. **Click the table tile option on the side and click create table**
 5. **Upload dataset**:
-   - **Download abalone dataset** from your build repository: `ml_pipelines/data/abalone-dataset.csv`
-   - **Table name**: `abalone`
+   - **Download abalone dataset** from your build repository: `aiops-seed-code/regression/model_build/ml_pipelines/data/abalone-dataset.csv`
+   - **Table name**: Rename to `abalone`
    - **Click "Next"**
 6. **In the add data page**:
    - **Review the schema**
    - **Click "Create table"**
 
-**Note**: During table creation, make note of the Glue database and table names as you'll need them in the next step.
+> **Note:**: During table creation, make note of the Glue database and table names as you'll need them in the next step.
 
 #### Update GitHub Secrets
 Update the GitHub secrets in both build and deploy repositories with these Glue database and table names:
