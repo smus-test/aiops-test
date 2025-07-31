@@ -506,7 +506,7 @@ After updating the Glue database and table secrets, you need to enable pipeline 
    - **Value**: `true`
 4. **Click "Add variable"**
 
-**Note**: By default, pipeline execution is disabled to prevent failures when Glue configuration is not yet updated. This variable must be set to `true` to enable the SageMaker pipeline execution.
+> **Note:** By default, pipeline execution is disabled to prevent failures when Glue configuration is not yet updated. This variable must be set to `true` to enable the SageMaker pipeline execution.
 
 ## 8. Build and Model Creation Process
 
@@ -526,7 +526,7 @@ Follow these steps to manually trigger the workflow:
 4. **Click "SageMaker Pipeline build SMUS project"**
 5. **Click "Run workflow"**
 
-**Note**: If the `TRIGGER_PIPELINE_EXECUTION` variable is not set to `true`, the workflow will exit gracefully with instructions on how to enable it.
+> **Note:** If the `TRIGGER_PIPELINE_EXECUTION` variable is not set to `true`, the workflow will exit gracefully with instructions on how to enable it.
 
 #### Verify Model Registration
 After successful build pipeline execution:
