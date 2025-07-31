@@ -557,34 +557,15 @@ When a model is approved:
    - **Trigger GitHub Actions workflow** in deploy repository via API
    - **Use workflow_dispatch** trigger with appropriate inputs
 
-#### Deploy Workflow Execution
 Once the automated deployment Lambda successfully triggers the workflow, the following deployment steps are executed in the deploy repository:
 
-1. **Environment Setup**:
-   - Checkout repository code
-   - Set up Python environment
-   - Configure AWS credentials
-   - Install dependencies
-
-2. **Model Discovery**:
-   - Find the latest approved model in Model Registry
-   - Extract model package ARN and details
-   - Validate model approval status
-
-3. **Model Deployment**:
-   - Create SageMaker model from approved model package
-   - Create or update endpoint configuration
-   - Deploy or update SageMaker endpoint
-   - Wait for endpoint to be "InService"
-
-4. **Endpoint Validation**:
-   - Test endpoint with sample data
-   - Validate response format
-   - Check endpoint health
-
-5. **Status Reporting**:
-   - Report deployment success/failure
-   - Provide endpoint details and access information
+#### Deploy Workflow Execution
+1. **Find approved model** in SageMaker Model Registry
+2. **Create SageMaker model** from approved model package
+3. **Create endpoint configuration** with instance settings
+4. **Deploy SageMaker endpoint** for real-time inference
+5. **Test endpoint** with sample data
+6. **Update endpoint** if already exists
 
 #### Monitor Deployment
 1. **Check GitHub Actions** in deploy repository
