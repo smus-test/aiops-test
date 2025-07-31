@@ -306,10 +306,10 @@ cd sample-smus-aiops/smus-cdk
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # Linux/MacOS
-# or
+```
+```bash
 .venv\Scripts\activate  # Windows
 ```
-
 3. **Install dependencies**:
 ```bash
 pip install -r requirements.txt
