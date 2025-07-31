@@ -1,43 +1,79 @@
-# AWS MLOps Repository Synchronization Framework (SMUS)
+# Automate AIOps with Amazon SageMaker Unified Studio projects
 
-A robust AWS CDK-based solution that automates the synchronization of ML model build and deployment repositories while managing GitHub secrets and repository configurations for MLOps workflows.
-
-This project provides an automated infrastructure for managing machine learning operations (MLOps) workflows by synchronizing repositories, handling GitHub secrets, and orchestrating the deployment process through AWS Step Functions. It leverages AWS CDK for infrastructure as code and includes Lambda functions for repository management and status monitoring.
-
-The framework integrates with AWS DataZone and SageMaker Unified Studio, providing a seamless experience for ML project deployment while maintaining security best practices through AWS Secrets Manager and IAM role management. It also supports Glue database and table integration for data processing workflows.
+An automation framework that creates GitHub repositories with AIOps templates when SageMaker Unified Studio projects are created, orchestrating the complete lifecycle from model training to automated endpoint deployment.
 
 ## Table of Contents
-1. [Prerequisites and Setup](#1-prerequisites-and-setup)
-2. [Configuration](#2-configuration)
-3. [CDK Deployment](#3-cdk-deployment)
-4. [Post-Deployment Configuration](#4-post-deployment-configuration)
-   - 4.5. [Git Connection Setup](#45-git-connection-setup)
-   - 4.6. [Create Custom Project Profile](#46-create-custom-project-profile)
-5. [SageMaker Unified Studio Project Creation](#5-sagemaker-unified-studio-project-creation)
-6. [Glue Database and Table Configuration](#6-glue-database-and-table-configuration)
-7. [Build and Model Creation Process](#7-build-and-model-creation-process)
-8. [Model Approval and Deployment Process](#8-model-approval-and-deployment-process)
-9. [Troubleshooting](#9-troubleshooting)
-10. [Architecture Overview](#10-architecture-overview)
+1. [Architecture Overview](#1-architecture-overview)
+2. [Prerequisites and Setup](#2-prerequisites-and-setup)
+3. [Configuration](#3-configuration)
+4. [CDK Deployment](#4-cdk-deployment)
+5. [Post-Deployment Configuration](#5-post-deployment-configuration)
+6. [SageMaker Unified Studio Project Creation](#6-sagemaker-unified-studio-project-creation)
+7. [Glue Database and Table Configuration](#7-glue-database-and-table-configuration)
+8. [Build and Model Creation Process](#8-build-and-model-creation-process)
+9. [Model Approval and Deployment Process](#9-model-approval-and-deployment-process)
+10. [Troubleshooting](#10-troubleshooting)
+11. [Clean-up](#11-clean-up)
+
 
 ## Repository Structure
 ```
-smus-cdk/
-├── app.py                  # Main CDK application entry point
-├── cdk.json               # CDK configuration file
-├── lambda/                # Lambda function implementations
-│   ├── check-project-status/    # Project status monitoring
-│   ├── create-deploy-repository/ # Repository creation and setup
-│   └── sync-repositories/       # Repository synchronization
-├── layers/                # Lambda layer definitions
-│   ├── git-layer/        # Git binary layer for Lambda
-│   └── python-layer/     # Python dependencies layer
-├── ml_ops_smus/          # Core framework implementation
-│   └── constructs/       # CDK construct definitions
-└── requirements.txt      # Project dependencies
+├── README.md                          # This comprehensive guide
+├── aiops-seed-code/                   # AI project templates and seed code
+│   └── regression/                    # Regression model templates
+│       ├── model_build/               # Model training and pipeline code
+│       │   ├── .github/workflows/     # Build pipeline GitHub Actions
+│       │   ├── ml_pipelines/          # SageMaker pipeline definitions
+│       │   └── source_scripts/        # Training, preprocessing, evaluation scripts          
+│       └── model_deploy/              # Model deployment and endpoint code
+│           ├── .github/workflows/     # Deployment pipeline GitHub Actions
+│           ├── config/dev/            # Endpoint configuration files
+│           ├── deploy_endpoint/       # Deployment scripts and utilities
+│           └── tests/                 # Integration and unit tests                             
+└── images                             # Architecture diagrams
+└── smus-cdk/                          # CDK infrastructure code
+    ├── app.py                         # Main CDK application entry point
+    ├── lambda/                        # Lambda function implementations
+    │   ├── check-project-status/      # Project status monitoring
+    │   ├── create-deploy-repository/  # Repository creation and setup
+    │   └── sync-repositories/         # Repository synchronization
+    ├── layers/                        # Lambda layer definitions
+    │   ├── git-layer/                 # Docker file to build git executable
+    │   └── python-layer/              # Python dependencies layer
+    └── ml_ops_smus/                   # Core framework implementation
+        └── constructs/                # CDK construct definitions
 ```
+## 1. Architecture Overview
 
-## 1. Prerequisites and Setup
+![aiops project architecture](images/github_action_mlops_architecture.jpg)
+
+The SMUS framework implements an event-driven architecture that automates the complete AIOps lifecycle through a sequential workflow, seamlessly connecting SageMaker Unified Studio project creation with production-ready infrastructure.
+
+1. The first step is configuring SageMaker Unified Studio environment, setting up domains, project profiles, and establishing the foundational infrastructure required for automated project creation and management.
+
+2. GitHub connections are configured and necessary AWS infrastructure is deployed including EventBridge rules, Step Functions workflows, and Lambda functions that will orchestrate the automated repository setup and deployment processes.
+
+3. Data scientists log into SageMaker Unified Studio and create a new project by selecting from available project templates defined in the project profile and configuring GitHub integration settings.
+
+4. Project creation generates a CreateProject event that is captured by EventBridge, triggering a Step Functions workflow that automatically creates and configures both build and deploy repositories in your GitHub organization, complete with template-specific seed code and GitHub Actions workflows.
+
+5. Code changes are pushed to the build repository or the workflow is manually triggered, causing the GitHub Actions build pipeline to automatically activate, executing environment setup, dependency installation, and pipeline validation.
+
+6. The build workflow orchestrates the execution of the SageMaker pipeline, which processes data through preprocessing, feature engineering, model training, and evaluation with comprehensive monitoring and logging.
+
+7. ML pipeline tracking occurs if tracking server is setup, enabling experiment tracking and model lineage management throughout the training process.
+
+8. Model registration automatically occurs upon successful pipeline completion, registering the trained model in SageMaker Model Registry with detailed metadata, training metrics, and lineage information, initially set to "PendingManualApproval" status.
+
+9. Data scientists or ML engineers review the model performance metrics and manually approve the model in SageMaker Model Registry, changing its status from "PendingManualApproval" to "Approved".
+
+10. The model approval event is automatically detected by EventBridge, which invokes a deployment Lambda function that triggers the GitHub Actions deployment workflow in the deploy repository using the workflow_dispatch mechanism.
+
+11. The deployment workflow retrieves the approved model, applies infrastructure as code definitions using AWS CDK, and provisions or updates a SageMaker endpoint with comprehensive validation, error handling, and rollback capabilities.
+
+12. The deployed endpoint becomes active and ready to serve real-time predictions, completing the automated journey from project creation to production deployment with full traceability and governance.
+
+## 2. Prerequisites and Setup
 
 ### AWS Account Requirements
 - AWS Account with appropriate IAM permissions for CDK deployment
@@ -58,7 +94,7 @@ smus-cdk/
   - `workflow` (Update GitHub Action workflows)
   - `write:packages` (Upload packages to GitHub Package Registry)
 
-## 2. Configuration
+## 3. Configuration
 
 ### Update Configuration File
 Before deployment, configure the `config.py` file located in `smus-cdk/ml_ops_smus/config.py`:
@@ -81,17 +117,182 @@ GitConfig(
 - **`public_smus_aiops_org`**: GitHub organization containing the template repositories
 - **`public_smus_aiops_org_repo`**: Repository name containing ML project templates
 - **`public_smus_aiops_org_repo_folder`**: Folder within the template repository containing project templates
-- **`oidc_role_github_workflow`**: IAM role name that GitHub Actions can assume
+- **`oidc_role_github_workflow`**: # IAM role name that GitHub Actions can assume. The role can be created in one of the following ways:
+      1. **Automatic Creation**: If this role doesn't exist, it will be automatically created by cdk along with the OIDC provider for GitHub.
+      2. **Use Existing Role**: If you have an existing OIDC setup and role, provide the name of your existing role here so that role can be used with github actions.
+      3. **Manual Creation**: If you want to manually create the OIDC setup without using CDK:
+        - Follow [AWS Documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html) to create OIDC provider and required permissions
+        - Create a role with the following trust relationship:
+        ```json
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Federated": "arn:aws:iam::<account-id>:oidc-provider/token.actions.githubusercontent.com"
+                    },
+                    "Action": "sts:AssumeRoleWithWebIdentity",
+                    "Condition": {
+                        "StringLike": {
+                            "token.actions.githubusercontent.com:sub": "repo:your-github-organization/*"
+                        }
+                    }
+                }
+            ]
+        }
+        ```
+        - Attach the following policy to the role:
+        ```json
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "sagemaker:CreatePipeline",
+                        "sagemaker:UpdatePipeline",
+                        "sagemaker:StartPipelineExecution",
+                        "sagemaker:DescribePipeline",
+                        "sagemaker:DescribePipelineExecution",
+                        "sagemaker:ListPipelineExecutions",
+                        "sagemaker:AddTags",
+                        "sagemaker:ListTags",
+                        "sagemaker:ListProcessingJobs",
+                        "sagemaker:DescribeProcessingJob",
+                        "sagemaker:DescribeImageVersion",
+                        "sagemaker:CreateProcessingJob",
+                        "sagemaker:ListPipelineExecutionSteps",
+                        "sagemaker:ListModelPackages",
+                        "sagemaker:StopProcessingJob",
+                        "sagemaker:CreateModel",
+                        "sagemaker:CreateEndpointConfig",
+                        "sagemaker:CreateEndpoint",
+                        "sagemaker:DeleteModel",
+                        "sagemaker:DeleteEndpointConfig",
+                        "sagemaker:DeleteEndpoint",
+                        "sagemaker:DescribeModel",
+                        "sagemaker:DescribeEndpointConfig",
+                        "sagemaker:DescribeEndpoint",
+                        "sagemaker:InvokeEndpoint"
+                    ],
+                    "Resource": "*"
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "cloudformation:ListStacks",
+                        "cloudformation:DescribeStacks",
+                        "cloudformation:CreateStack",
+                        "cloudformation:UpdateStack",
+                        "cloudformation:DeleteStack",
+                        "cloudformation:ListStackResources",
+                        "cloudformation:DescribeStackEvents",
+                        "cloudformation:GetTemplateSummary",
+                        "cloudformation:ValidateTemplate",
+                        "cloudformation:GetTemplate",
+                        "cloudformation:CreateChangeSet",
+                        "cloudformation:DeleteChangeSet",
+                        "cloudformation:ListChangeSets",
+                        "cloudformation:DescribeChangeSet",
+                        "cloudformation:ExecuteChangeSet",
+                        "cloudformation:SetStackPolicy",
+                        "cloudformation:DescribeStackResource"
+                    ],
+                    "Resource": "*"
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "ecr:CreateRepository",
+                        "ecr:DeleteRepository",
+                        "ecr:DescribeRepositories",
+                        "ecr:PutLifecyclePolicy",
+                        "ecr:SetRepositoryPolicy"
+                    ],
+                    "Resource": "*"
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": "ssm:*",
+                    "Resource": "arn:aws:ssm:*:*:parameter/cdk-bootstrap/*"
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "iam:CreateRole",
+                        "iam:Get*",
+                        "iam:Delete*",
+                        "iam:List*",
+                        "iam:Put*",
+                        "iam:Tag*",
+                        "iam:Attach*",
+                        "iam:Detach*",
+                        "iam:Update*"
+                    ],
+                    "Resource": "*"
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:Put*",
+                        "s3:Get*",
+                        "s3:List*",
+                        "s3:Create*",
+                        "s3:Delete*"
+                    ],
+                    "Resource": "*"
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": "sts:AssumeRole",
+                    "Resource": [
+                        "arn:aws:iam::*:role/cdk-*",
+                        "arn:aws:iam::*:role/cdk-gitactions-*"
+                    ]
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "glue:GetTable",
+                        "glue:GetDatabase",
+                        "glue:GetPartitions"
+                    ],
+                    "Resource": "*"
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": "iam:PassRole",
+                    "Resource": "*",
+                    "Condition": {
+                        "StringEquals": {
+                            "iam:PassedToService": "sagemaker.amazonaws.com"
+                        }
+                    }
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "logs:CreateLogGroup",
+                        "logs:CreateLogStream",
+                        "logs:PutLogEvents"
+                    ],
+                    "Resource": "*"
+                }
+            ]
+        }
+        ```
+        - Provide the name of this manually created role in the configuration
 - **`private_github_organization`**: Your GitHub organization where build/deploy repos will be created
 - **`github_token_secret_name`**: Name of the secret in AWS Secrets Manager for GitHub token
 
-## 3. CDK Deployment
+## 4. CDK Deployment
 
 ### Environment Setup
 1. **Clone the repository**:
 ```bash
-git clone https://github.com/smus-test/aiops-test.git
-cd aiops-test/smus-cdk
+git clone https://github.com/aws-samples/sample-smus-aiops.git
+cd sample-smus-aiops/smus-cdk
 ```
 
 2. **Create and activate virtual environment**:
@@ -141,8 +342,9 @@ After successful deployment, verify the following resources are created:
   - `MlOpsSmusStack-model-approval-rule`
 - **IAM Role**: `aiops-smus-github-action`
 - **Secrets Manager**: `ml-ops-smus-github-token`
+- **Identity Provider**: `token.actions.githubusercontent.com`
 
-## 4. Post-Deployment Configuration
+## 5. Post-Deployment Configuration
 
 ### Update GitHub Token Secret
 1. **Navigate to AWS Secrets Manager Console**
@@ -173,7 +375,7 @@ aws events describe-rule --name "ml-ops-smus-datazone-project-rule-v2"
 aws events describe-rule --name "MlOpsSmusStack-model-approval-rule"
 ```
 
-## 4.5. Git Connection Setup
+### Git Connection Setup
 
 ### Create SageMaker Unified Studio Domain (if needed)
 1. **Navigate to SageMaker Unified Studio Console**
@@ -200,9 +402,8 @@ Before creating projects, you need to set up a Git connection to enable integrat
    - **Select your newly created connection**
    - **Click "Enable" to complete setup**
 
-## 4.6. Create Custom Project Profile
+## Create Custom Project Profile
 
-### Create Project Profile
 You need to create a custom project profile that will be used for your ML projects.
 
 1. **Navigate to domain details page**
@@ -221,7 +422,7 @@ You need to create a custom project profile that will be used for your ML projec
    - **Select SSO users and groups** who can access this project profile
 6. **Project profile readiness**: Check "Enable project profile on creation"
 
-## 5. SageMaker Unified Studio Project Creation
+## 6. SageMaker Unified Studio Project Creation
 
 ### Create SageMaker Project
 1. **Navigate to your SMUS domain** by clicking "Open unified studio"
@@ -250,8 +451,7 @@ After project creation, you'll see two repositories created in your private GitH
 - **Build Repository**: Workflow triggers on code changes but requires `TRIGGER_PIPELINE_EXECUTION=true` to execute
 - **Deploy Repository**: Workflow only triggers via model approval events or manual execution (no automatic triggers on code changes)
 
-
-## 6. Glue Database and Table Configuration
+## 7. Glue Database and Table Configuration
 
 #### Create Table in SageMaker Unified Studio
 After project creation, you need to create a Glue table with your data:
@@ -268,10 +468,10 @@ After project creation, you need to create a Glue table with your data:
    - **Review the schema**
    - **Click "Create table"**
 
-**Note**: During table creation, you'll see both the Glue database name and table name in the SageMaker Unified Studio interface. Make note of these exact names for the next step.
+**Note**: During table creation, make note of the Glue database and table names as you'll need them in the next step.
 
 #### Update GitHub Secrets
-Update the GitHub secrets in both build and deploy repositories with the actual names you saw during table creation:
+Update the GitHub secrets in both build and deploy repositories with these Glue database and table names:
 
 **For Build Repository**
 1. **Navigate to**: `your-org/project-build-repo`
@@ -300,7 +500,7 @@ After updating the Glue database and table secrets, you need to enable pipeline 
 
 **Note**: By default, pipeline execution is disabled to prevent failures when Glue configuration is not yet updated. This variable must be set to `true` to enable the SageMaker pipeline execution.
 
-### 7. Build and Model Creation Process
+## 8. Build and Model Creation Process
 
 After updating the GitHub secrets and enabling pipeline execution, the build workflow can be triggered. The workflow includes a safety check that prevents execution until the `TRIGGER_PIPELINE_EXECUTION` variable is set to `true`, ensuring that Glue database and table configurations are properly updated before running the pipeline.
 
@@ -323,7 +523,7 @@ After successful build pipeline execution:
 3. **Find your model package group**: `aiops-{project-id}-models`
 4. **Verify model version 1** with status "PendingManualApproval"
 
-### 8. Model Approval and Deployment Process
+## 9. Model Approval and Deployment Process
 
 #### Manual Model Approval
 1. **Navigate to SageMaker Unified Studio**
@@ -340,19 +540,39 @@ When a model is approved:
 1. **SageMaker emits approval event** to EventBridge
 2. **EventBridge rule** `MlOpsSmusStack-model-approval-rule` detects the event
 3. **Model approval Lambda** `MlOpsSmusStack-model-approval-trigger` is invoked to:
-      **Extracts project information** from the event
-      **Constructs deploy repository name**: `project-deploy-repo`
-      **Triggers GitHub Actions workflow** in deploy repository via API
-      **Uses workflow_dispatch** trigger with appropriate inputs
+   - **Extract project information** from the event
+   - **Construct deploy repository name**: `project-deploy-repo`
+   - **Trigger GitHub Actions workflow** in deploy repository via API
+   - **Use workflow_dispatch** trigger with appropriate inputs
 
-Once the automated deployment Lambda successfully triggers the workflow, the following deployment steps are executed in the deploy repository:
 #### Deploy Workflow Execution
-1. **Find approved model** in SageMaker Model Registry
-2. **Create SageMaker model** from approved model package
-3. **Create endpoint configuration** with instance settings
-4. **Deploy SageMaker endpoint** for real-time inference
-5. **Test endpoint** with sample data
-6. **Update endpoint** if already exists
+Once the automated deployment Lambda successfully triggers the workflow, the following deployment steps are executed in the deploy repository:
+
+1. **Environment Setup**:
+   - Checkout repository code
+   - Set up Python environment
+   - Configure AWS credentials
+   - Install dependencies
+
+2. **Model Discovery**:
+   - Find the latest approved model in Model Registry
+   - Extract model package ARN and details
+   - Validate model approval status
+
+3. **Model Deployment**:
+   - Create SageMaker model from approved model package
+   - Create or update endpoint configuration
+   - Deploy or update SageMaker endpoint
+   - Wait for endpoint to be "InService"
+
+4. **Endpoint Validation**:
+   - Test endpoint with sample data
+   - Validate response format
+   - Check endpoint health
+
+5. **Status Reporting**:
+   - Report deployment success/failure
+   - Provide endpoint details and access information
 
 #### Monitor Deployment
 1. **Check GitHub Actions** in deploy repository
@@ -365,14 +585,14 @@ aws sagemaker list-endpoints --sort-by "CreationTime" --sort-order "Descending"
 # Check endpoint status
 aws sagemaker describe-endpoint --endpoint-name "your-endpoint-name"
 ```
-Finally, to ensure successful deployment:
+
 #### Verify Deployed Endpoint
 1. **Navigate to SageMaker Unified Studio**
 2. **Go to Model Development → Inference → Endpoints**
 3. **Verify endpoint status**: "InService"
 4. **Test endpoint** with sample data if needed
 
-### 9. Troubleshooting
+### 10. Troubleshooting
 
 #### Common Issues and Solutions
 
@@ -402,24 +622,48 @@ Finally, to ensure successful deployment:
 - **EventBridge**: `/aws/events/rule/{rule-name}`
 - **GitHub Actions**: Repository → Actions tab
 
-### 10. Architecture Overview
+## 11. Clean-up
 
-#### Initial Setup and Infrastructure
+### Endpoint Cleanup
+When you no longer need the deployed endpoints, clean them up to avoid ongoing costs:
 
-    AWS CDK deploys the infrastructure including:
-        AWS Lambda functions for project status, repository sync, and deployment
-        AWS Step Functions for workflow orchestration
-        EventBridge rules for event monitoring
-        IAM roles and GitHub OIDC integration
-        AWS Secrets Manager for GitHub token management
+```bash
+# Delete endpoint (stops inference)
+aws sagemaker delete-endpoint --endpoint-name <endpoint-name>
 
-Project Creation and Repository Setup Flow
+# Delete endpoint configuration
+aws sagemaker delete-endpoint-config --endpoint-config-name <config-name>
 
-    When a user creates a project in SageMaker Unified Studio:
-        EventBridge detects the project creation event
-        Triggers Step Function workflow to orchestrate the repository setup process
+# Delete model
+aws sagemaker delete-model --model-name <model-name>
+```
 
-    The Step Function workflow orchestrates three Lambda functions in sequence:
-        check-project-status Lambda validates the project creation, gathers project details, and verifies SageMaker domain and space configurations
-        sync-repositories Lambda creates necessary GitHub secrets for AWS integration, syncs the build repository with model building code from the template repository, which then triggers a workflow responsible for creating SageMaker pipeline for model building
-        create-deploy-repository Lambda creates a separate deploy repository, configures required GitHub secrets, and sets up model deployment code from the template repository, which will be responsible for creating and updating SageMaker endpoints when triggered
+### Pipeline Cleanup
+```bash
+# Delete SageMaker pipeline
+aws sagemaker delete-pipeline --pipeline-name "githubactions-<project-id>"
+
+# Clean up S3 artifacts (be careful - this removes all data)
+aws s3 rm s3://<artifact-bucket>/githubactions-<project-id>/ --recursive
+```
+
+### Model Registry Cleanup
+```bash
+# Delete model package group (removes all model versions)
+aws sagemaker delete-model-package-group --model-package-group-name <group-name>
+```
+
+### Infrastructure Cleanup
+```bash
+# Destroy CDK stack (removes all SMUS infrastructure)
+cd smus-cdk
+cdk destroy
+
+# Clean up CDK bootstrap (optional - only if not used by other projects)
+# aws cloudformation delete-stack --stack-name CDKToolkit
+```
+
+### SageMaker Unified Studio Cleanup
+1. **Delete project** in SageMaker Unified Studio
+2. **Remove project profile** if no longer needed
+3. **Disable Git connection** if not used by other projects

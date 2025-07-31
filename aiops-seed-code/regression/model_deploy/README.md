@@ -1,137 +1,72 @@
-# MLOps SageMaker Unified Studio Model Deployment with GitHub Actions
+# Automate AIOps with Amazon SageMaker Unified Studio projects - Model Deploy
 
-This repository contains resources required to deploy approved ML models from SageMaker Model Registry to SageMaker endpoints using GitHub Actions for CI/CD.
+This repository contains the model deployment pipeline for the SMUS framework. It provides automated deployment of approved ML models from SageMaker Model Registry to SageMaker endpoints using event-driven GitHub Actions workflows.
 
 **Note**: Please refer to the model build section and complete the model training process before proceeding with deployment.
-
-## Table of Contents
-1. [Solution Architecture](#solution-architecture)
-2. [Repository Structure](#repository-structure)
-3. [Deployment Overview](#deployment-overview)
-4. [GitHub Connection and Setup](#github-connection-and-setup)
-5. [GitHub Secrets Configuration](#github-secrets-configuration)
-6. [Workflow Trigger Mechanism](#workflow-trigger-mechanism)
-7. [Model Approval Process](#model-approval-process)
-8. [Deployment Workflow](#deployment-workflow)
-9. [Endpoint Management](#endpoint-management)
-10. [Local Deployment and Testing](#local-deployment-and-testing)
-11. [Monitoring and Validation](#monitoring-and-validation)
-12. [Troubleshooting](#troubleshooting)
-13. [Clean-up](#clean-up)
-
-## Solution Architecture
-
-The model deployment process follows an event-driven architecture:
-1. **Model Approval** → EventBridge → Lambda → GitHub Actions → SageMaker Endpoint
-
-![mlops project architecture](../model_build/diagrams/github_action_mlops_architecture.jpg)
-
 
 ## Repository Structure
 
 ```
-.
-├── LICENSE.txt
-├── README.md
-├── .github
-│   └── workflows
-│       └── deploy_model_pipeline.yml  <--- GitHub Actions deployment workflow
-├── config
-│   └── dev
-│       └── endpoint-config.yml        <--- Endpoint configuration
-├── deploy_endpoint
-│   ├── deploy.py                      <--- Deployment script
-│   ├── requirements.txt               <--- Python dependencies
-│   └── utils.py                       <--- Utility functions
-├── tests
-│   └── integration_tests
-│       └── buildspec.yml              <--- Test specifications
-└── requirements.txt                   <--- Project dependencies
+model_deploy/
+├── README.md                           # This guide
+├── .github/workflows/                  # GitHub Actions CI/CD
+│   └── deploy_model_pipeline.yml      # Main deployment workflow
+├── config/dev/                        # Configuration management
+│   └── endpoint-config.yml            # Endpoint configuration
+├── deploy_endpoint/                    # Core deployment logic
+│   ├── deploy_endpoint_stack.py       # CDK deployment stack
+│   ├── get_approved_package.py        # Model package discovery
+│   └── utils.py                       # Deployment utilities
+├── tests/                             # Testing framework
+│   ├── integration_tests/             # Integration tests
+│   └── unittests/                     # Unit tests
+├── app.py                             # CDK application entry point
+└── requirements.txt                   # Core dependencies
 ```
+## Architecture Overview
 
-## Deployment Overview
+![aiops project architecture](../images/github_action_mlops_architecture.jpg)
 
-### Key Features:
-- **Event-driven deployment**: Automatically triggered when models are approved in SageMaker Model Registry
-- **Manual deployment support**: Can be manually triggered via GitHub Actions
-- **Endpoint management**: Creates new endpoints or updates existing ones
-- **Configuration-driven**: Uses YAML configuration for endpoint settings
-- **Testing integration**: Includes endpoint validation and testing
+The SMUS framework implements an event-driven architecture that automates the complete AIOps lifecycle through a sequential workflow, seamlessly connecting SageMaker Unified Studio project creation with production-ready infrastructure.
 
-### Deployment Flow:
-1. Model approved in SageMaker Model Registry
-2. EventBridge detects approval event
-3. Lambda function triggers GitHub Actions workflow
-4. Workflow deploys model to SageMaker endpoint
-5. Endpoint validation and testing
+1. The first step is configuring SageMaker Unified Studio environment, setting up domains, project profiles, and establishing the foundational infrastructure required for automated project creation and management.
 
-## GitHub Connection and Setup
+2. GitHub connections are configured and necessary AWS infrastructure is deployed including EventBridge rules, Step Functions workflows, and Lambda functions that will orchestrate the automated repository setup and deployment processes.
 
-### Prerequisites:
-1. **Completed model build setup**: Ensure the build repository is configured and has produced approved models
-2. **IAM OIDC Provider**: Same OIDC provider used for model build repository
-3. **IAM Role**: Same IAM role with deployment permissions
+3. Data scientists log into SageMaker Unified Studio and create a new project by selecting from available project templates defined in the project profile and configuring GitHub integration settings.
 
-### Required IAM Permissions:
-The GitHub Actions role needs the following additional permissions for deployment:
+4. Project creation generates a CreateProject event that is captured by EventBridge, triggering a Step Functions workflow that automatically creates and configures both build and deploy repositories in your GitHub organization, complete with template-specific seed code and GitHub Actions workflows.
 
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "sagemaker:CreateModel",
-                "sagemaker:CreateEndpointConfig",
-                "sagemaker:CreateEndpoint",
-                "sagemaker:UpdateEndpoint",
-                "sagemaker:DescribeEndpoint",
-                "sagemaker:DescribeEndpointConfig",
-                "sagemaker:DescribeModel",
-                "sagemaker:ListEndpoints",
-                "sagemaker:InvokeEndpoint",
-                "sagemaker:DescribeModelPackage",
-                "sagemaker:ListModelPackages"
-            ],
-            "Resource": "*"
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
-                "iam:PassRole"
-            ],
-            "Resource": "arn:aws:iam::*:role/*SageMaker*",
-            "Condition": {
-                "StringEquals": {
-                    "iam:PassedToService": "sagemaker.amazonaws.com"
-                }
-            }
-        }
-    ]
-}
-```
+5. Code changes are pushed to the build repository or the workflow is manually triggered, causing the GitHub Actions build pipeline to automatically activate, executing environment setup, dependency installation, and pipeline validation.
 
-## GitHub Secrets Configuration
+6. The build workflow orchestrates the execution of the SageMaker pipeline, which processes data through preprocessing, feature engineering, model training, and evaluation with comprehensive monitoring and logging.
 
-Create the following GitHub secrets for the deployment repository. Most secrets are the same as the build repository:
+7. ML pipeline tracking occurs if tracking server is setup, enabling experiment tracking and model lineage management throughout the training process.
 
-### Required Secrets:
+8. Model registration automatically occurs upon successful pipeline completion, registering the trained model in SageMaker Model Registry with detailed metadata, training metrics, and lineage information, initially set to "PendingManualApproval" status.
 
-- `OIDC_ROLE_GITHUB_WORKFLOW`: The ARN of the IAM role that GitHub Actions will assume
-- `SAGEMAKER_PIPELINE_ROLE_ARN`: The ARN of the IAM role used for SageMaker operations
-- `SAGEMAKER_PROJECT_NAME`: The name of the SageMaker project
-- `SAGEMAKER_PROJECT_ID`: The unique identifier for the SageMaker project
-- `AMAZON_DATAZONE_DOMAIN`: The domain name for Amazon DataZone integration
-- `AMAZON_DATAZONE_SCOPENAME`: The scope name within Amazon DataZone
-- `SAGEMAKER_DOMAIN_ARN`: The ARN of the SageMaker Studio domain
-- `SAGEMAKER_SPACE_ARN`: The ARN of the SageMaker Studio space
-- `AMAZON_DATAZONE_PROJECT`: The Amazon DataZone project name
-- `REGION`: The AWS region where resources are deployed
-- `ARTIFACT_BUCKET`: The S3 bucket used to store artifacts
-- `MODEL_PACKAGE_GROUP_NAME`: The name of the model package group in Model Registry
-- `GLUE_DATABASE`: The name of the Glue database (for consistency)
-- `GLUE_TABLE`: The name of the Glue table (for consistency)
+9. Data scientists or ML engineers review the model performance metrics and manually approve the model in SageMaker Model Registry, changing its status from "PendingManualApproval" to "Approved".
+
+10. The model approval event is automatically detected by EventBridge, which invokes a deployment Lambda function that triggers the GitHub Actions deployment workflow in the deploy repository using the workflow_dispatch mechanism.
+
+11. The deployment workflow retrieves the approved model, applies infrastructure as code definitions using AWS CDK, and provisions or updates a SageMaker endpoint with comprehensive validation, error handling, and rollback capabilities.
+
+12. The deployed endpoint becomes active and ready to serve real-time predictions, completing the automated journey from project creation to production deployment with full traceability and governance.
+
+This repository handles steps 10-12 of the AIOps workflow, focusing on the model deployment and endpoint management phases.
+
+## Configuration Requirements
+
+### Required GitHub Secrets
+Configure in repository Settings → Secrets and variables → Actions:
+
+- `OIDC_ROLE_GITHUB_WORKFLOW`: IAM role ARN for GitHub Actions authentication
+- `SAGEMAKER_PIPELINE_ROLE_ARN`: IAM role for SageMaker operations
+- `SAGEMAKER_PROJECT_NAME`: SageMaker project name
+- `SAGEMAKER_PROJECT_ID`: Unique SageMaker project identifier
+- `REGION`: AWS region for endpoint deployment
+- `ARTIFACT_BUCKET`: S3 bucket for deployment artifacts
+- `MODEL_PACKAGE_GROUP_NAME`: Model Registry package group name
 
 ### Deployment-Specific Configuration:
 
@@ -145,43 +80,13 @@ instance_count: 1
 variant_name: "AllTraffic"
 initial_weight: 1
 ```
+## Model Deployment Process
 
-## Workflow Trigger Mechanism
+There are two methods to deploy models using this repository:
 
-### Important: No Automatic Code Triggers
-Unlike the build repository, the deployment workflow **does not trigger automatically** on code changes (push/pull_request). This is intentional to prevent unintended deployments.
+### Method 1: Automatic Deployment (Recommended)
 
-### Supported Triggers:
-
-1. **Model Approval Events** (Primary):
-   - Triggered automatically when a model is approved in SageMaker Model Registry
-   - Uses EventBridge → Lambda → GitHub Actions workflow_dispatch
-
-2. **Manual Execution**:
-   - Go to repository Actions tab
-   - Select "Sagemaker Model Deploy Pipeline SMUS project"
-   - Click "Run workflow"
-   - Choose log level (info/warning/debug)
-
-### Workflow Structure:
-```yaml
-on:
-  workflow_dispatch:
-    inputs:
-      logLevel:
-        description: 'Log level'
-        required: true
-        default: 'warning'
-        type: choice
-        options:
-          - info
-          - warning
-          - debug
-```
-
-## Model Approval Process
-
-### Approving Models:
+#### Step 1: Approve Model in SageMaker Model Registry
 1. **Navigate to SageMaker Unified Studio**
 2. **Go to Build → AI OPS → Model Registry**
 3. **Find your model package group**: `aiops-{project-id}-models`
@@ -191,97 +96,31 @@ on:
 7. **Add approval comments** (optional)
 8. **Click "Update status"**
 
-### Automatic Deployment Trigger:
+#### Step 2: Automatic Deployment Trigger
 When a model is approved:
 1. **SageMaker emits approval event** to EventBridge
 2. **EventBridge rule** detects the event
-3. **Lambda function** extracts project information and triggers deployment workflow
-4. **GitHub Actions workflow** executes deployment
+3. **Lambda function** extracts project information and triggers the GitHub Actions deployment workflow automatically
+4. **Deployment workflow** executes without any manual intervention
 
-## Deployment Workflow
+### Method 2: Manual Deployment
 
-### Workflow Steps:
+#### Step 1: Ensure Model is Approved
+- Verify that at least one model in your Model Registry has "Approved" status
+- Follow the approval process from Method 1 if needed
 
-1. **Environment Setup**:
-   - Checkout repository code
-   - Set up Python environment
-   - Configure AWS credentials
-   - Install dependencies
+#### Step 2: Manual Workflow Trigger
+1. **Navigate to repository Actions tab**
+2. **Select "Sagemaker Model Deploy Pipeline SMUS project"**
+3. **Click "Run workflow"**
+4. **Choose log level** (info/warning/debug)
+5. **Click "Run workflow" button**
 
-2. **Model Discovery**:
-   - Find the latest approved model in Model Registry
-   - Extract model package ARN and details
-   - Validate model approval status
-
-3. **Model Deployment**:
-   - Create SageMaker model from approved model package
-   - Create or update endpoint configuration
-   - Deploy or update SageMaker endpoint
-   - Wait for endpoint to be "InService"
-
-4. **Endpoint Validation**:
-   - Test endpoint with sample data
-   - Validate response format
-   - Check endpoint health
-
-5. **Status Reporting**:
-   - Report deployment success/failure
-   - Provide endpoint details and access information
-
-### Sample Workflow Execution:
-```
-=== Model Deployment Started ===
-Finding approved model in registry...
-Found approved model: arn:aws:sagemaker:...
-Creating SageMaker model...
-Creating endpoint configuration...
-Deploying endpoint: smus-abalone-endpoint
-Waiting for endpoint to be InService...
-Endpoint Status: Creating
-Endpoint Status: InService
-Testing endpoint with sample data...
-Deployment completed successfully!
-```
-
-## Endpoint Management
-
-### Endpoint Lifecycle:
-
-1. **New Deployment**:
-   - Creates new SageMaker model
-   - Creates new endpoint configuration
-   - Creates new endpoint
-
-2. **Model Updates**:
-   - Creates new model version
-   - Updates existing endpoint with new model
-   - Performs blue/green deployment
-
-3. **Configuration Changes**:
-   - Modify `config/dev/endpoint-config.yml`
-   - Commit changes (note: won't auto-trigger deployment)
-   - Manually trigger deployment workflow
-
-### Endpoint Monitoring:
-```bash
-# List endpoints
-aws sagemaker list-endpoints --region <region>
-
-# Check endpoint status
-aws sagemaker describe-endpoint --endpoint-name <endpoint-name> --region <region>
-
-# Test endpoint
-aws sagemaker-runtime invoke-endpoint \
-  --endpoint-name <endpoint-name> \
-  --content-type application/json \
-  --body '{"instances": [[0.5, 0.3, 0.2, 0.1, 0.4, 0.6, 0.7, 0.8]]}' \
-  response.json
-```
 
 ## Local Deployment and Testing
 
 ### Prerequisites:
-- Python 3.10 or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
+- Python 3.9 or [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
 - [AWS CLI](https://aws.amazon.com/cli/) configured with appropriate credentials
 - Access to SageMaker Model Registry with approved models
 
@@ -307,37 +146,7 @@ aws sagemaker-runtime invoke-endpoint \
      --region <REGION>
    ```
 
-### Local Testing:
-```bash
-# Test the deployed endpoint
-python -c "
-import boto3
-import json
-
-client = boto3.client('sagemaker-runtime', region_name='<region>')
-response = client.invoke_endpoint(
-    EndpointName='<endpoint-name>',
-    ContentType='application/json',
-    Body=json.dumps({'instances': [[0.5, 0.3, 0.2, 0.1, 0.4, 0.6, 0.7, 0.8]]})
-)
-print(response['Body'].read().decode())
-"
-```
-
-## Monitoring and Validation
-
-### Deployment Monitoring:
-1. **GitHub Actions**: Monitor workflow execution in repository Actions tab
-2. **AWS Console**: Check SageMaker endpoints status
-3. **CloudWatch**: Monitor endpoint metrics and logs
-
-### Endpoint Validation:
-The deployment workflow includes automatic validation:
-- **Health Check**: Verifies endpoint is "InService"
-- **Inference Test**: Sends sample data and validates response
-- **Performance Check**: Basic latency and response validation
-
-### Monitoring Commands:
+### Endpoint Monitoring:
 ```bash
 # Check endpoint status
 aws sagemaker describe-endpoint --endpoint-name <endpoint-name>
@@ -374,18 +183,6 @@ aws sagemaker list-endpoints --sort-by CreationTime --sort-order Descending
    - **Cause**: Model expects different input format
    - **Solution**: Update test data format in deployment script
 
-### Debug Commands:
-```bash
-# Check model registry
-aws sagemaker list-model-packages --model-package-group-name <group-name>
-
-# Check endpoint logs
-aws logs describe-log-streams --log-group-name /aws/sagemaker/Endpoints/<endpoint-name>
-
-# Check deployment events
-aws sagemaker describe-endpoint --endpoint-name <endpoint-name> --query 'ProductionVariants[0].DeployedImages'
-```
-
 ### Log Locations:
 - **GitHub Actions**: Repository → Actions tab → Workflow run
 - **SageMaker Endpoints**: CloudWatch → Log groups → `/aws/sagemaker/Endpoints/<endpoint-name>`
@@ -405,19 +202,3 @@ aws sagemaker delete-endpoint-config --endpoint-config-name <config-name>
 # Delete model
 aws sagemaker delete-model --model-name <model-name>
 ```
-
-### Repository Cleanup:
-1. Delete GitHub repository if no longer needed
-2. Remove GitHub secrets and variables
-3. Clean up any local development environments
-
-**Warning**: Deleting endpoints will stop all inference capabilities. Ensure you have backups or alternative endpoints before deletion.
-
-## Best Practices
-
-1. **Model Validation**: Always test models thoroughly before approval
-2. **Gradual Rollout**: Consider using traffic splitting for production deployments
-3. **Monitoring**: Set up CloudWatch alarms for endpoint metrics
-4. **Cost Management**: Use appropriate instance types and auto-scaling policies
-5. **Security**: Regularly rotate IAM credentials and review permissions
-6. **Documentation**: Keep endpoint configurations and deployment notes updated
