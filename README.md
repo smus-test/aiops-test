@@ -123,7 +123,7 @@ GitConfig(
       3. **Manual Creation**: If you want to manually create the OIDC setup without using CDK:
         - Follow [AWS Documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html) to create OIDC provider and required permissions
         - Create a role with the following trust relationship:
-        ```json
+        ```python
         {
             "Version": "2012-10-17",
             "Statement": [
@@ -143,7 +143,7 @@ GitConfig(
         }
         ```
         - Attach the following policy to the role:
-        ```json
+        ```python
         {
             "Version": "2012-10-17",
             "Statement": [
