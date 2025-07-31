@@ -77,6 +77,7 @@ The SMUS framework implements an event-driven architecture that automates the co
 
 ### AWS Account Requirements
 - AWS Account with appropriate IAM permissions for CDK deployment
+    - **Required AWS Permissions**: `PowerUserAccess` managed policy (or equivalent permissions for IAM, Lambda, Step Functions, EventBridge, Secrets Manager, CloudFormation, and S3)
 - AWS CLI configured with credentials
 - Access to AWS services: CDK, Lambda, Step Functions, EventBridge, Secrets Manager, IAM, SageMaker, DataZone, Glue, S3
 
@@ -145,7 +146,7 @@ GitConfig(
         ```
 
         - Attach the following policy to the role:
-        
+
         ```python
         {
             "Version": "2012-10-17",
