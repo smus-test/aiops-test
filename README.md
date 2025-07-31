@@ -118,11 +118,12 @@ GitConfig(
 - **`public_smus_aiops_org_repo`**: Repository name containing ML project templates
 - **`public_smus_aiops_org_repo_folder`**: Folder within the template repository containing project templates
 - **`oidc_role_github_workflow`**: # IAM role name that GitHub Actions can assume. The role can be created in one of the following ways:
-      1. **Automatic Creation**: If this role doesn't exist, it will be automatically created by cdk along with the OIDC provider for GitHub.
-      2. **Use Existing Role**: If you have an existing OIDC setup and role, provide the name of your existing role here so that role can be used with github actions.
-      3. **Manual Creation**: If you want to manually create the OIDC setup without using CDK:
+    - **Automatic Creation**: If this role doesn't exist, it will be automatically created by cdk along with the OIDC provider for GitHub.
+    - **Use Existing Role**: If you have an existing OIDC setup and role, provide the name of your existing role here so that role can be used with github actions.
+    - **Manual Creation**: If you want to manually create the OIDC setup without using CDK:
         - Follow [AWS Documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html) to create OIDC provider and required permissions
         - Create a role with the following trust relationship:
+
         ```python
         {
             "Version": "2012-10-17",
@@ -142,7 +143,9 @@ GitConfig(
             ]
         }
         ```
+
         - Attach the following policy to the role:
+        
         ```python
         {
             "Version": "2012-10-17",
@@ -282,6 +285,7 @@ GitConfig(
             ]
         }
         ```
+
         - Provide the name of this manually created role in the configuration
 - **`private_github_organization`**: Your GitHub organization where build/deploy repos will be created
 - **`github_token_secret_name`**: Name of the secret in AWS Secrets Manager for GitHub token
