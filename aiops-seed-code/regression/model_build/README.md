@@ -3,7 +3,7 @@
 This repository contains the model training pipeline for the SMUS framework. It provides automated ML model training, evaluation, and registration using SageMaker Pipelines orchestrated through GitHub Actions.
 
 ## Repository Structure
-
+```
 model_build/
 ├── README.md                           # This guide
 ├── .github/workflows/                  # GitHub Actions CI/CD
@@ -17,7 +17,7 @@ model_build/
    ├── training/xgboost/                # XGBoost training
    ├── evaluate/                        # Model evaluation
    └── helpers/                         # Utility functions
-
+```
 ## Architecture Overview
 
 ![aiops project architecture](/images/github_action_mlops_architecture.png)
