@@ -452,7 +452,7 @@ You need to create a custom project profile that will be used for your ML projec
 
 ### Repository Naming Convention
 After project creation, you'll see two repositories created in your private GitHub organization:
-- **Build repository**: `{your-specified-name}` (e.g., `smus-blog-build-repo`)
+- **Build repository**: `{repo-name-specified}` (e.g., `smus-blog-build-repo`)
 - **Deploy repository**: `{project-id}-{datazone-domain-id}-deploy-repo`
 
 ### Workflow Trigger Behavior
@@ -482,14 +482,14 @@ After project creation, you need to create a Glue table with your data:
 Update the GitHub secrets in both build and deploy repositories with these Glue database and table names:
 
 **For Build Repository**
-1. **Navigate to**: `your-org/project-build-repo`
+1. **Navigate to**: `your-org/{repo-name-specified}`
 2. **Go to Settings → Secrets and variables → Actions**
 3. **Update the following secrets**:
    - `GLUE_DATABASE`: Update from `glue_db` to your actual database name (e.g., `glue_db_3hwskube5dybhj`)
    - `GLUE_TABLE`: Update from `abalone` to your actual table name (e.g., `abalone`)
 
 **For Deploy Repository**
-1. **Navigate to**: `your-org/project-deploy-repo`
+1. **Navigate to**: `your-org/{project-id}-{datazone-domain-id}-deploy-repo`
 2. **Go to Settings → Secrets and variables → Actions**
 3. **Update the same secrets**:
    - `GLUE_DATABASE`: Your actual database name
