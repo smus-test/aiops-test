@@ -512,6 +512,10 @@ After updating the Glue database and table secrets, you need to enable pipeline 
 
 After updating the GitHub secrets and enabling pipeline execution, the build workflow can be triggered. The workflow includes a safety check that prevents execution until the `TRIGGER_PIPELINE_EXECUTION` variable is set to `true`, ensuring that Glue database and table configurations are properly updated before running the pipeline.
 
+For the first run, you'll need to trigger the workflow manually using GitHub Actions workflow dispatch. Alternatively, you can trigger the workflow by adding an empty line to any file in the repository. 
+
+For subsequent runs, any code changes made to modify the job or make changes will automatically trigger the build pipeline responsible for creating the model.
+
 #### Manual Workflow Trigger 
 Follow these steps to manually trigger the workflow:
 1. **Ensure Prerequisites**:
