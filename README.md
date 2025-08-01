@@ -415,8 +415,9 @@ You need to create a custom project profile that will be used for your ML projec
 
 1. **Navigate to domain details page**
 2. **Find "Project profiles" tile → Click "Create"**
-3. **Configure profile**:
+3. **Configure Project profile**:
    - **Name**: `regression`
+     > **Note:** The Project profile name must match a folder name inside `aiops-seed-code`. For this use case, we use 'regression' as our templates are in `aiops-seed-code/regression/`. You can extend this by adding other use cases (e.g., 'classification', 'forecasting') in `aiops-seed-code/`, each containing their own `model_build` and `model_deploy` templates. During project creation, when a project profile is selected, based on the project profile name, the corresponding template code will be used to set up your build and deploy repositories.
    - **Creation option**: "Create from a template"
    - **Capabilities**: "All capabilities"
 4. **Default tooling blueprint deployment settings**:
@@ -593,19 +594,31 @@ aws sagemaker describe-endpoint --endpoint-name "your-endpoint-name"
 - Problem: Repository creation fails with authentication errors
 - Solution: Verify GitHub token in Secrets Manager, ensure correct permissions
 
-**2. IAM Role Trust Relationship**
+**2. Source Repository Files Not Visible in JupyterLab**
+- Problem: When opening JupyterLab in your project, you don't see the expected files in the `src` folder
+- Solution: 
+  1. In SageMaker Studio, open your project
+  2. Go to "Build, IDE & applications"
+  3. Launch JupyterLab
+  4. Once in JupyterLab, open a new Terminal
+  5. Navigate to the source directory: `cd /home/sagemaker-user/src`
+  6. Run `git reset --hard` to clear any local changes
+  7. Run `git pull` to sync with the remote repository
+  8. Refresh your JupyterLab file browser to see the updated files
+     
+**3. IAM Role Trust Relationship**
 - Problem: GitHub Actions cannot assume IAM role
 - Solution: Verify trust relationship includes correct GitHub organization
 
-**3. EventBridge Not Triggering**
+**4. EventBridge Not Triggering**
 - Problem: Step Functions not triggered on project creation
 - Solution: Check EventBridge rule is enabled and pattern matches
 
-**4. Model Approval Not Triggering Deploy**
+**5. Model Approval Not Triggering Deploy**
 - Problem: Deploy workflow not triggered after model approval
 - Solution: Verify model approval EventBridge rule and Lambda logs
 
-**5. Glue Database/Table Not Found**
+**6. Glue Database/Table Not Found**
 - Problem: Build pipeline fails with Glue database errors
 - Solution: Update GitHub secrets with correct Glue database/table names
 
