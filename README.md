@@ -415,8 +415,9 @@ You need to create a custom project profile that will be used for your ML projec
 
 1. **Navigate to domain details page**
 2. **Find "Project profiles" tile → Click "Create"**
-3. **Configure profile**:
+3. **Configure Project profile**:
    - **Name**: `regression`
+     > **Note:** The Project profile name must match a folder name inside `aiops-seed-code`. For this use case, we use 'regression' as our templates are in `aiops-seed-code/regression/`. You can extend this by adding other use cases (e.g., 'classification', 'forecasting') in `aiops-seed-code/`, each containing their own `model_build` and `model_deploy` templates. During project creation, when a project profile is selected, based on the project profile name, the corresponding template code will be used to set up your build and deploy repositories.
    - **Creation option**: "Create from a template"
    - **Capabilities**: "All capabilities"
 4. **Default tooling blueprint deployment settings**:
