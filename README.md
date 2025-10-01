@@ -673,4 +673,6 @@ cdk destroy
 1. **Delete project** in SageMaker Unified Studio
 1. **Remove project profile** if no longer needed
 1. **Delete Deploy and Build repository** created in GitHub organization
+2. **Delete AWS resources manually** 
+	- IAM Role `aiops-smus-github-action` and IAM Identity Provider `token.actions.githubusercontent.com` may need to be deleted manually
 1. **Disable Git connection** if not used by other projects
