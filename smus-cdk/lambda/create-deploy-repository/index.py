@@ -6,7 +6,7 @@ import subprocess
 import shutil
 
 def create_github_repository(private_organization_name, repo_name, git_token):
-    """Create a new GitHub repository in the specified organization"""
+    """Create a new GitHub repository in the specified organization or user account"""
     try:
         print(f"\nCreating GitHub repository: {private_organization_name}/{repo_name}")
         headers = {
@@ -21,8 +21,23 @@ def create_github_repository(private_organization_name, repo_name, git_token):
             'description': f'Deploy repository for AIOps project'
         }
 
+        # First, check if the organization exists
+        org_check_response = requests.get(
+            f"https://api.github.com/orgs/{private_organization_name}",
+            headers=headers
+        )
+
+        if org_check_response.status_code == 200:
+            # It's an organization, use org endpoint
+            api_url = f"https://api.github.com/orgs/{private_organization_name}/repos"
+            print(f"Creating repository in organization: {private_organization_name}")
+        else:
+            # It's likely a user account, use user endpoint
+            api_url = "https://api.github.com/user/repos"
+            print(f"Creating repository in user account: {private_organization_name}")
+
         response = requests.post(
-            f"https://api.github.com/orgs/{private_organization_name}/repos",  
+            api_url,
             headers=headers,
             json=payload
         )
@@ -180,7 +195,7 @@ def copy_template_content(template_repo_url, deploy_repo_name, git_token, profil
         # Commit and push changes
         subprocess.run(['git', 'add', '-A'], cwd=deploy_repo_path, check=True)
         subprocess.run(
-            ['git', 'commit', '-m', 'Initial setup - Copying model_deploy folder contents from {profile_name}'],
+            ['git', 'commit', '-m', f'Initial setup - Copying model_deploy folder contents from {profile_name}'],
             cwd=deploy_repo_path,
             check=True
         )
