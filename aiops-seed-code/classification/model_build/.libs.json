@@ -1,0 +1,19 @@
+{
+  "ApplyChangeToSpace": false,
+  "Jar": {
+    "MavenArtifacts": [],
+    "S3Paths": [],
+    "LocalPaths": [],
+    "OtherPaths": []
+  },
+  "Python": {
+    "CondaPackages": {
+      "Channels": [],
+      "PackageSpecs": []
+    },
+    "PyPIPackages": [],
+    "S3Paths": [],
+    "LocalPaths": [],
+    "OtherPaths": []
+  }
+}

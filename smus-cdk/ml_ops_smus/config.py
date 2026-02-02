@@ -35,8 +35,8 @@ class GitConfig:
 
 # Single configuration instance
 config = GitConfig(
-    public_smus_aiops_org="aws-samples",
-    public_smus_aiops_org_repo="sample-smus-aiops",
+    public_smus_aiops_org="smus-test",
+    public_smus_aiops_org_repo="aiops-test",
     public_smus_aiops_org_repo_folder="aiops-seed-code",
     public_repo_branch="main",
     oidc_role_github_workflow="aiops-smus-github-action",
